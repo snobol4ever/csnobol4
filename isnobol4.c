@@ -12285,8 +12285,8 @@ L_FNCC:
     POP(MAXLEN);
     if (D_PTR(PDLPTR) < D_PTR(PDLHED))
 	BRANCH(INTR13)
-    else
-	goto L_FNCC1;
+    if (D_PTR(PDLPTR) == D_PTR(PDLHED))
+	goto L_SCOK;
 L_FNCC1:
     D_A(PDLPTR) += 3*DESCR;
     if (D_A(PDLPTR) > D_A(PDLEND))
@@ -12302,46 +12302,6 @@ L_FNCD:
     D(PDLPTR) = D(PDLHED);
     D(NAMICL) = D(NHEDCL);
     BRANCH(FAIL)
-    /*_*/
-L_FNCP:
-    SAVSTK();
-    if (PATVAL(XPTR) == 1)
-	BRANCH(FAIL)
-    if (D_V(XPTR) == P)
-	goto L_FNCPP;
-    if (D_V(XPTR) != S)
-	BRANCH(INTR1)
-    X_LOCSP(TSP,XPTR);
-    D_A(TMVAL) = S_L(TSP);
-    D_F(TMVAL) = D_V(TMVAL) = 0;
-    SAVSTK();
-    PUSH(LNODSZ);
-    BLOCK(TPTR);
-    MAKNOD(XPTR,TPTR,TMVAL,ZEROCL,CHRCL,XPTR);
-L_FNCPP:
-    D_A(XSIZ) = D_V(D_A(XPTR));
-    D_F(XSIZ) = D_V(XSIZ) = 0;
-    D_A(TSIZ) = D_V(D_A(FNCAPT));
-    D_F(TSIZ) = D_V(TSIZ) = 0;
-    D_A(ZSIZ) = D_V(D_A(FNCCPT));
-    D_F(ZSIZ) = D_V(ZSIZ) = 0;
-    D_A(TSIZ) += D_A(XSIZ);
-    D_A(TSIZ) += D_A(ZSIZ);
-    D_V(TSIZ) = P;
-    SAVSTK();
-    PUSH(TSIZ);
-    BLOCK(TPTR);
-    D(ZPTR) = D(TPTR);
-    D_A(TSIZ) = D_V(D_A(FNCAPT));
-    D_F(TSIZ) = D_V(TSIZ) = 0;
-    CPYPAT(TPTR,FNCAPT,ZEROCL,ZEROCL,ZEROCL,TSIZ);
-    D_A(YSIZ) = D_V(D_A(FNCCPT));
-    D_F(YSIZ) = D_V(YSIZ) = 0;
-    D(ZSIZ) = D(TSIZ);
-    D_A(ZSIZ) += D_A(XSIZ);
-    CPYPAT(TPTR,XPTR,ZEROCL,TSIZ,ZSIZ,XSIZ);
-    CPYPAT(TPTR,FNCCPT,ZEROCL,ZSIZ,ZEROCL,YSIZ);
-    BRANCH(RTZPTR)
     /*_*/
 L_NME:
     D_A(PDLPTR) += 3*DESCR;
@@ -12551,6 +12511,49 @@ L_SCERSX:
     SAVSTK();
     SCERST(NORET);
     goto L_TSALF;
+    /*_*/
+}
+int
+FNCP(ret_t retval) {
+    ENTRY(FNCP)
+    SAVSTK();
+    if (PATVAL(XPTR) == 1)
+	BRANCH(FAIL)
+    if (D_V(XPTR) == P)
+	goto L_FNCPP;
+    if (D_V(XPTR) != S)
+	BRANCH(INTR1)
+    X_LOCSP(TSP,XPTR);
+    D_A(TMVAL) = S_L(TSP);
+    D_F(TMVAL) = D_V(TMVAL) = 0;
+    SAVSTK();
+    PUSH(LNODSZ);
+    BLOCK(TPTR);
+    MAKNOD(XPTR,TPTR,TMVAL,ZEROCL,CHRCL,XPTR);
+L_FNCPP:
+    D_A(XSIZ) = D_V(D_A(XPTR));
+    D_F(XSIZ) = D_V(XSIZ) = 0;
+    D_A(TSIZ) = D_V(D_A(FNCAPT));
+    D_F(TSIZ) = D_V(TSIZ) = 0;
+    D_A(ZSIZ) = D_V(D_A(FNCCPT));
+    D_F(ZSIZ) = D_V(ZSIZ) = 0;
+    D_A(TSIZ) += D_A(XSIZ);
+    D_A(TSIZ) += D_A(ZSIZ);
+    D_V(TSIZ) = P;
+    SAVSTK();
+    PUSH(TSIZ);
+    BLOCK(TPTR);
+    D(ZPTR) = D(TPTR);
+    D_A(TSIZ) = D_V(D_A(FNCAPT));
+    D_F(TSIZ) = D_V(TSIZ) = 0;
+    CPYPAT(TPTR,FNCAPT,ZEROCL,ZEROCL,TSIZ,TSIZ);
+    D_A(YSIZ) = D_V(D_A(FNCCPT));
+    D_F(YSIZ) = D_V(YSIZ) = 0;
+    D(ZSIZ) = D(TSIZ);
+    D_A(ZSIZ) += D_A(XSIZ);
+    CPYPAT(TPTR,XPTR,ZEROCL,TSIZ,ZSIZ,XSIZ);
+    CPYPAT(TPTR,FNCCPT,ZEROCL,ZSIZ,ZEROCL,YSIZ);
+    BRANCH(RTZPTR)
     /*_*/
 }
 static int

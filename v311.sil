@@ -4160,8 +4160,8 @@ FNCPP  GETSIZ  XSIZ,XPTR	   Get size of P
        RCALL   TPTR,BLOCK,TSIZ	   Allocate block for whole pattern
        MOVD    ZPTR,TPTR	   Save return pointer
        GETSIZ  TSIZ,FNCAPT	   Size of enter node
-       CPYPAT  TPTR,FNCAPT,ZEROCL,ZEROCL,ZEROCL,TSIZ
-*				   Copy enter node (FNCA) into block
+       CPYPAT  TPTR,FNCAPT,ZEROCL,ZEROCL,TSIZ,TSIZ
+*				   Copy enter node (FNCA) into block, next->P
        GETSIZ  YSIZ,FNCCPT	   Size of exit node
        SUM     ZSIZ,TSIZ,XSIZ	   Offset to exit = enter + P
        CPYPAT  TPTR,XPTR,ZEROCL,TSIZ,ZSIZ,XSIZ

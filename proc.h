@@ -158,3 +158,9 @@ extern int NORM_REG(ret_t);
 extern int BCHAR(ret_t);
 extern int NEW_PAGE(ret_t);
 extern int LABELC(ret_t);
+
+extern int FNCA(ret_t);
+extern int FNCB(ret_t);
+extern int FNCC(ret_t);
+extern int FNCD(ret_t);
+extern int FNCP(ret_t);
