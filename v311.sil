@@ -2638,7 +2638,7 @@ INIT   PROC    ,		   Statement initialization procedure
        INCRA   EXNOCL,1		   Increment &STCOUNT
        ACOMPC  TRAPCL,0,,RTNUL3,RTNUL3
 *				   Check &TRACE
-       XCALLC  chk_break,(0),INIT1 Check for breakpoint		[PLB113]
+*      XCALLC  chk_break,(0),INIT1 — removed: STNO trace fires unconditionally for monitor
        LOCAPT  ATPTR,TKEYL,STNOKY,INIT1				[PLB113]
 *				   Look for STNO trace		[PLB113]
        RCALL   ,TRPHND,ATPTR					[PLB113]

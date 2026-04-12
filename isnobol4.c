@@ -4262,8 +4262,6 @@ INIT(ret_t retval) {
     D_A(EXNOCL)++;
     if (D_A(TRAPCL) <= 0)
 	BRANCH(RTNUL3)
-    if (!chk_break(0))
-	goto L_INIT1;
     if (!LOCAPT(ATPTR,TKEYL,STNOKY))
 	goto L_INIT1;
     SAVSTK();
