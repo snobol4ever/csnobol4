@@ -950,6 +950,10 @@ XTB     EQU    33
 XRTNL3  EQU    34
 XFNCE   EQU    35
 XSUCF   EQU    36
+XFNCA   EQU    37
+XFNCB   EQU    38
+XFNCC   EQU    39
+XFNCD   EQU    40
 *---------------------------------------------------------------------*
        TITLE   'Program Initialization'
 BEGIN  INIT    ,		   Initialize system
@@ -3615,7 +3619,7 @@ SALT2  GETDC   XCL,PDLPTR,DESCR	   Get then-or descriptor
        TESTF   PATICL,FNC,SCIN3	   Check for function
 * [PLB65] replaces BRANIC:
        GETDC   PTBRCL,PATICL,0	   Get index			[PLB65]
-PATBRA SELBRA  PTBRCL,(ANYC,ARBF,ARBN,ATP,CHR,BAL,BALF,BRKC,BRKX,BRKXF,DNME,DNME1,EARB,DSAR,ENME,ENMI,FARB,FNME,LNTH,NME,NNYC,ONAR,ONRF,POSI,RPSI,RTB,FAIL,SALF,SCOK,SCON,SPNC,STAR,TB,RTNUL3,FNCE,SUCF)
+PATBRA SELBRA  PTBRCL,(ANYC,ARBF,ARBN,ATP,CHR,BAL,BALF,BRKC,BRKX,BRKXF,DNME,DNME1,EARB,DSAR,ENME,ENMI,FARB,FNME,LNTH,NME,NNYC,ONAR,ONRF,POSI,RPSI,RTB,FAIL,SALF,SCOK,SCON,SPNC,STAR,TB,RTNUL3,FNCE,SUCF,FNCA,FNCB,FNCC,FNCD)
 *				   Dispatch on index		[PLB65]
        BRANCH  INTR13		   Catch bad data		[PLB66]
 *_
@@ -4078,6 +4082,93 @@ FNCE   XPROC   ,		   Procedure for matching FENCE	[PLB67]
 *				   Save length failure switch
        SETAC   LENFCL,1		   Set length failure switch
        BRANCH  SCOK		   Return matching		[PLB65]
+*_
+*---------------------------------------------------------------------*
+*
+*      FENCE(P) — enter node
+*
+FNCA   XPROC   ,		   Enter FENCE(P) — save outer PDLHED, push FNCB trap
+       PUSH    (MAXLEN,LENFCL,PDLPTR,PDLHED,NAMICL,NHEDCL)
+*				   Save outer PDL state on history list
+       ACOMP   PDLPTR,PDLEND,INTR31
+*				   Check for overflow
+       INCRA   PDLPTR,3*DESCR	   Make room for FNCB trap entry
+       PUTDC   PDLPTR,DESCR,FNCBCL Insert inner-fail trap
+       GETLG   TMVAL,TXSP	   Get cursor
+       PUTDC   PDLPTR,2*DESCR,TMVAL Save cursor
+       PUTDC   PDLPTR,3*DESCR,LENFCL Save length failure switch
+       MOVD    PDLHED,PDLPTR	   Set new inner PDLHED
+       MOVD    NHEDCL,NAMICL	   Set new inner NHEDCL
+       BRANCH  SCOK		   Continue matching
+*_
+*---------------------------------------------------------------------*
+*
+*      FENCE(P) — inner fail trap
+*
+FNCB   XPROC   ,		   Inner fail: P exhausted — restore outer PDLHED, fail out
+       POP     (NHEDCL,NAMICL,PDLHED,PDLPTR,LENFCL,MAXLEN)
+*				   Restore outer PDL state
+       BRANCH  FAIL		   Propagate failure outward
+*_
+*---------------------------------------------------------------------*
+*
+*      FENCE(P) — exit node
+*
+FNCC   XPROC   ,		   Exit FENCE(P) — P matched; restore outer PDLHED
+       MOVD    PDLPTR,PDLHED	   Pop inner history entries
+       MOVD    NAMICL,NHEDCL	   Pop inner name entries
+       POP     (NHEDCL,NAMICL,PDLHED,PDLPTR,LENFCL,MAXLEN)
+*				   Restore outer PDL state
+       PCOMP   PDLPTR,PDLHED,FNCC1,FNCC1,INTR13
+*				   Did P leave any alternatives?
+FNCC1  INCRA   PDLPTR,3*DESCR	   Make room for seal entry
+       ACOMP   PDLPTR,PDLEND,INTR31
+*				   Check for overflow
+       PUTDC   PDLPTR,DESCR,FNCDCL Insert outer seal
+       GETLG   TMVAL,TXSP	   Get cursor
+       PUTDC   PDLPTR,2*DESCR,TMVAL Save cursor
+       PUTDC   PDLPTR,3*DESCR,LENFCL Save length failure switch
+       BRANCH  SCOK		   Continue matching
+*_
+*---------------------------------------------------------------------*
+*
+*      FENCE(P) — outer seal
+*
+FNCD   XPROC   ,		   Outer seal: backtrack tried to re-enter P; kill and fail
+       MOVD    PDLPTR,PDLHED	   Reset PDL past all of P's alternatives
+       MOVD    NAMICL,NHEDCL	   Reset name list
+       BRANCH  FAIL		   Fail outward
+*_
+*---------------------------------------------------------------------*
+*
+*      FENCE(P) — function builder
+*
+FNCP   PROC    ,		   FENCE(P) — build pattern [FNCA] -> P -> [FNCC]
+       RCALL   XPTR,PATVAL,,FAIL   Evaluate argument as pattern
+       VEQLC   XPTR,P,,FNCPP	   PATTERN is desired form
+       VEQLC   XPTR,S,INTR1	   STRING must be made into PATTERN
+       LOCSP   TSP,XPTR		   Get specifier
+       GETLG   TMVAL,TSP	   Get length of string
+       RCALL   TPTR,BLOCK,LNODSZ   Allocate block for argument
+       MAKNOD  XPTR,TPTR,TMVAL,ZEROCL,CHRCL,XPTR
+FNCPP  GETSIZ  XSIZ,XPTR	   Get size of P
+       GETSIZ  TSIZ,FNCAPT	   Size of enter node
+       GETSIZ  ZSIZ,FNCCPT	   Size of exit node
+       SUM     TSIZ,TSIZ,XSIZ	   Total = enter + P + exit
+       SUM     TSIZ,TSIZ,ZSIZ
+       SETVC   TSIZ,P		   Mark as PATTERN type
+       RCALL   TPTR,BLOCK,TSIZ	   Allocate block for whole pattern
+       MOVD    ZPTR,TPTR	   Save return pointer
+       GETSIZ  TSIZ,FNCAPT	   Size of enter node
+       CPYPAT  TPTR,FNCAPT,ZEROCL,ZEROCL,ZEROCL,TSIZ
+*				   Copy enter node (FNCA) into block
+       GETSIZ  YSIZ,FNCCPT	   Size of exit node
+       SUM     ZSIZ,TSIZ,XSIZ	   Offset to exit = enter + P
+       CPYPAT  TPTR,XPTR,ZEROCL,TSIZ,ZSIZ,XSIZ
+*				   Copy P into block
+       CPYPAT  TPTR,FNCCPT,ZEROCL,ZSIZ,ZEROCL,YSIZ
+*				   Copy exit node (FNCC) into block
+       BRANCH  RTZPTR		   Return assembled pattern
 *_
 *---------------------------------------------------------------------*
 *
@@ -10778,6 +10869,10 @@ ENMECL DESCR   ENMEFN,FNC,3
 ENMICL DESCR   ENMIFN,FNC,3
 ERORCL DESCR   ERORFN,FNC,1
 FNCFCL DESCR   FNCFFN,FNC,2
+FNCACL DESCR   FNCAFN,FNC,2	   FNCA inner-enter cell
+FNCBCL DESCR   FNCBFN,FNC,2	   FNCB inner-fail cell
+FNCCL  DESCR   FNCFN,FNC,2	   FNCC exit cell
+FNCDCL DESCR   FNCDFN,FNC,2	   FNCD outer-seal cell
 FNMECL DESCR   FNMEFN,FNC,2
 GOTGCL DESCR   GOTGFN,FNC,1
 GOTLCL DESCR   GOTLFN,FNC,1
@@ -11461,6 +11556,8 @@ FNLIST DESCR   FNLIST,TTL+MARK,FNCPLE-FNLIST-DESCR
        DESCR   EVALSP,0,0
        DESCR   FLDSFN,FNC,0	   FIELD(V,N)
        DESCR   FLDSSP,0,0
+       DESCR   FNCPFN,FNC,0	   FENCE(P)
+       DESCR   FNCESP,0,0
        DESCR   FREZFN,FNC,0	   FREEZE(T)			[PLB34]
        DESCR   FREZSP,0,0					[PLB34]
        DESCR   FUNTFN,FNC,0	   FUNCTION(N)			[PLB80]
@@ -11776,6 +11873,11 @@ TBFN   DESCR   XTB,0,3		   Matching for TAB(N)
 ABORFN DESCR   XRTNL3,0,3	   Matching for ABORT
 FNCEFN DESCR   XFNCE,0,2	   Matching for FENCE
 FNCFFN DESCR   XRTNL3,0,2	   Failure for FENCE
+FNCAFN DESCR   XFNCA,0,2	   FNCA enter fence
+FNCBFN DESCR   XFNCB,0,2	   FNCB inner fail
+FNCFN  DESCR   XFNCC,0,2	   FNCC exit fence
+FNCDFN DESCR   XFNCD,0,2	   FNCD outer seal
+FNCPFN DESCR   FNCP,0,1		   FENCE(P) function builder — 1 arg
 SUCFFN DESCR   XSUCF,0,2	   Matching for SUCCEED
 *
 *      Initialization Data for Functions
@@ -12095,6 +12197,16 @@ FAILPT DESCR   FAILPT,TTL+MARK,3*DESCR
 *
 FNCEPT DESCR   FNCEPT,TTL+MARK,3*DESCR
        DESCR   FNCEFN,FNC,2	   FENCE
+       DESCR   0,0,0
+       DESCR   0,0,0
+*
+FNCAPT DESCR   FNCAPT,TTL+MARK,3*DESCR  FENCE(P) enter node template
+       DESCR   FNCAFN,FNC,2	   FNCA
+       DESCR   0,0,0
+       DESCR   0,0,0
+*
+FNCCPT DESCR   FNCCPT,TTL+MARK,3*DESCR  FENCE(P) exit node template
+       DESCR   FNCFN,FNC,2	   FNCC
        DESCR   0,0,0
        DESCR   0,0,0
 *
