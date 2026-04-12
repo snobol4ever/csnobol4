@@ -1,0 +1,29 @@
+/* $Id: osopen.c,v 1.4 2020-09-29 05:02:39 phil Exp $ */
+
+/*
+ * VMS open hook
+ */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H defined */
+
+#include <stdio.h>
+
+#include "h.h"
+#include "snotypes.h"
+#include "lib.h"
+#include "str.h"			/* strcmp */
+
+int
+osdep_open(const char *fname, const char *mode, FILE **fpp) {
+    if (strcmp(fname, "/dev/tty") == 0) {
+	*fpp = fopen("TT:", mode);
+	return TRUE;			/* matched */
+    }
+    if (strcmp(fname, "/dev/null") == 0) {
+	*fpp = fopen("NL:", mode);	/* NLA0:? */
+	return TRUE;			/* matched */
+    }
+    return FALSE;			/* no match */
+}

@@ -1,0 +1,36 @@
+/* $Id: tlib.c,v 1.3 2020-10-11 04:39:02 phil Exp $ */
+
+/* test of snobol4 shared library and memory based I/O */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "h.h"
+#include "snobol4.h"
+#include "units.h"
+
+int
+main() {
+    char *program = "\tOUTPUT = 'Hello ' INPUT\n\tTERMINAL = 'tty'\nEND\n";
+    char *input = "World!\n";
+    char output[1024];
+    char terminal[1024];
+    int status;
+
+    snobol4_init_ni();
+    io_input_string("program", program);
+    io_input_string("input", input);
+
+    terminal[0] = output[0] = '\0';
+    io_output_string(UNITO, "output", output, sizeof(output));
+    io_output_string(UNITP, "terminal", terminal, sizeof(terminal));
+
+    status = snobol4_run();
+    
+    fputs(terminal, stderr);
+
+    fputs(output, stdout);
+
+    return status;
+}

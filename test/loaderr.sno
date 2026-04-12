@@ -1,0 +1,13 @@
+* load leaves function undefined
+	LOAD("ZZZ()", "xyzzy")
+	OUTPUT = FUNCTION(.ZZZ) "ZZZ"
+
+* load leaves defined function in place
+	DEFINE("QQQ(X)")				:(EQQQ)
+QQQ	QQQ = X						:(RETURN)
+EQQQ
+
+	OUTPUT = FUNCTION(.QQQ) QQQ("QQQ1")
+	LOAD("QQQ()", "xyzzy")
+	OUTPUT = FUNCTION(.QQQ) QQQ("QQQ2")
+END

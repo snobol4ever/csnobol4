@@ -1,0 +1,52 @@
+/* $Id: replace.c,v 1.7 2020-09-27 19:45:56 phil Exp $ */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H defined */
+
+#include <stdio.h>
+
+#include "h.h"
+#include "snotypes.h"
+#include "macros.h"
+#include "syntab.h"			/* XXX for CHARSET */
+#include "lib.h"
+
+#define ALPHSZ CHARSET			/* XXX ? */
+#define MASK (ALPHSZ-1)
+
+#if ALPHSZ & MASK
+#include "you lose"
+#endif /* ALPHSZ & MASK */
+
+void
+rplace(struct spec *sp1, struct spec *sp2, struct spec *sp3) {
+    int l1, l2, l3;
+    char *cp1, *cp2, *cp3;
+    char table[ALPHSZ];
+    int i;
+
+    l1 = S_L(sp1);
+    l2 = S_L(sp2);
+    l3 = S_L(sp3);
+
+    cp1 = S_SP(sp1);
+    cp2 = S_SP(sp2);
+    cp3 = S_SP(sp3);
+
+    /* XXX check if l2 == l3? */
+
+    /* set up identity vector */
+    for (i = 0; i < ALPHSZ; i++)
+	table[i] = i;
+
+    /* read translations into vector */
+    while (l2-- > 0 && l3-- > 0)
+	table[ *cp2++ & MASK ] = *cp3++;
+
+    /* translate string in place */
+    while (l1-- > 0) {
+	*cp1 = table[ *cp1 & MASK ];
+	cp1++;
+    }	
+}

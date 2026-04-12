@@ -1,0 +1,15 @@
+/* $Id: bindresvport.h,v 1.3 2020-09-27 19:45:56 phil Exp $ */
+
+#ifdef BINDRESVPORT_IN_RPC_H		/* FreeBSD, NetBSD, but NOT OpenBSD! */
+#include <rpc/rpc.h>
+#endif /* BINDRESVPORT_IN_RPC_H defined */
+
+/* from bindresvport.c */
+/* should be in lib.h, but would require socket.h! */
+
+#ifdef NEED_BINDRESVPORT
+extern int bindresvport(int, struct sockaddr_in *);
+#endif /* NEED_BINDRESVPORT defined */
+#ifdef NEED_BINDRESVPORT_SA
+extern int bindresvport_sa(int, struct sockaddr *);
+#endif /* NEED_BINDRESVPORT_SA defined */

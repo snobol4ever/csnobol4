@@ -1,0 +1,18 @@
+-INCLUDE 'setuputil.sno'
+
+	t = TABLE()
+	t['module'] = 'ndbm'
+	t['sources'] = 'ndbm.c' NDBM_SRCS
+	t['include_dirs'] = NDBM_INCLUDE
+	t['cflags'] = NDBM_CFLAGS
+	t['ldflags'] = NDBM_LDFLAGS
+	
+	t['author'] = t['maintainer'] = 'Phil Budne'
+	t['author_email'] = t['maintainer_email'] = 'phil@regressive.org'
+	t['license'] = 'BSD'
+* description
+* long_description
+* version (get from RCS ID?)
+
+	setup(t)
+end

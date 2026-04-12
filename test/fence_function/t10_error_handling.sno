@@ -1,0 +1,23 @@
+*----------------------------------------------------------------------
+* test/fence_function/t10_error_handling.sno
+* FENCE(P) with non-pattern argument should produce error 259
+* ("fence argument is not pattern" — from SPITBOL).
+* In CSNOBOL4 this becomes the standard "illegal data type" error.
+*
+* Also verify FENCE(P) where P is a string (should be auto-converted).
+*----------------------------------------------------------------------
+
+*   String argument: SNOBOL4 allows string-as-pattern (literal match)
+               S = 'hello world'
+               S  FENCE('hello') . w                               :F(FAIL10A)
+               OUTPUT = IDENT(w, 'hello') 'PASS t10a: string arg to FENCE = [' w ']'
+                                                                   :S(T10B)
+               OUTPUT = 'FAIL t10a: expected hello got [' w ']'   :(END)
+FAIL10A        OUTPUT = 'FAIL t10a: string arg match failed'       :(END)
+
+*   Integer argument: should fail/error (not a valid pattern)
+T10B           &ERRLIMIT = 1
+               FENCE(42)                                           :S(FAIL10B)F(PASS10B)
+FAIL10B        OUTPUT = 'FAIL t10b: FENCE(integer) should not succeed'  :(END)
+PASS10B        OUTPUT = 'PASS t10b: FENCE(integer) failed as expected (bad arg)'
+END

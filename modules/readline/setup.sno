@@ -1,0 +1,18 @@
+# $Id: setup.sno,v 1.4 2022-03-25 20:12:02 phil Exp $
+-INCLUDE 'setuputil.sno'
+
+	t = TABLE()
+	t['module'] = 'readline'
+	t['sources'] = 'readline.c'
+	t['ldflags'] = READLINE_LDFLAGS
+	t['include_dirs'] = READLINE_INCLUDE
+
+	t['author'] = t['maintainer'] = 'Phil Budne'
+	t['author_email'] = t['maintainer_email'] = 'phil@regressive.org'
+	t['license'] = 'BSD'
+* description
+* long_description
+* version (get from RCS ID?)
+
+	setup(t)
+end

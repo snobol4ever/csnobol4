@@ -1,0 +1,185 @@
+/* $Id: load.c,v 1.30 2020-11-10 20:49:26 phil Exp $ */
+
+/*
+ * load and run external functions for systems using v7/BSD style a.out
+ * -plb 11/9/93
+ *
+ * converted to loadx/os_load client 9/27/2020 -- not compiled
+ */
+
+/*
+ * How it works;
+ *
+ * uses ld to create an OMAGIC (impure) a.out file (which need
+ * not load on a page boundary)
+ *
+ * runs ld twice; once to determine overall size, and a second time
+ * after load address known.  This avoids needing to know about
+ * relocation bits which tend to be CPU/port dependant.
+ */
+ 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H defined */
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <a.out.h>
+
+#include <stdlib.h>			/* for malloc, getenv */
+#include <stdio.h>
+
+#include "h.h"
+#include "snotypes.h"
+#include "path.h"			/* LD_PATH */
+#include "lib.h"			/* prototypes */
+#include "str.h"			/* strdup */
+
+/* is this right? -- ok for OMAGIC */
+#undef N_SIZE				/* defined in NetBSD nlist.h */
+#define N_SIZE(A) ((A).a_text + (A).a_data + (A).a_bss)
+
+/* NetBSD compatibility */
+#ifndef N_GETMAGIC
+#define N_GETMAGIC(A) ((A).a_magic)
+#endif /* N_GETMAGIC not defined */
+
+#ifndef SYM_PREFIX
+#define SYM_PREFIX "_"			/* XXX most (all?) a.out systems? */
+#endif /* SYM_PREFIX not defined */
+
+static int
+ld(char *output, char *addr, const char *func, char *input) {
+    char command[1024];			/* XXX */
+
+    /*
+     * -N		old, impure excutable (OMAGIC)
+     * -o output	output file
+     * -T addr		text addr (data follows)
+     * -e name		entry point
+     * input		relocatable object file (plus libs)!
+     */
+
+    /* XXX -A <path of mainbol executable??? */
+    /* XXX -lm -lc ?? */
+
+    sprintf( command, "%s -N -o %s -T %x -e %s%s %s",
+	    LD_PATH, output, addr, SYM_PREFIX, func, input );
+
+    /* XXX use direct execvp of ld? pass argv? */
+    return system(command) == 0;
+}
+
+#define PATHLEN 256			/* XXX use MAXPATHLEN from param.h? */
+
+/* "file" may include loader options (libs) after filename!! */
+void *
+os_load_library(const char *file) {
+    return strdup(file);
+}
+
+void *
+os_find_symbol(void *lib, const char *func, void **stash) {
+    struct exec a;
+    char *file = lib;			/* strdup'ed above */
+    char temp[PATHLEN];
+    char *data;
+    void *entry;
+    long len;				/* size of code+data */
+    int f;
+
+    /*
+     * "module" lookup does not pass "stash" pointer.
+     * To implement would need to:
+     * 1. link object file ONCE (on load), return pointer to struct
+     * 2. keep either: executable file, namelist file, or namelist in memory
+     *
+     * All of this only REALLY matters for snobol4 shared library, and
+     * the only a.out "BSD" systems I can think of that used a.out .so
+     * files (SunOS4, FreeBSD, NetBSD) had dlopen.
+     */
+    if (!stash)
+	return NULL;
+
+    sprintf( temp, "%s/snoXXXXXX", TMP_DIR);
+    mktemp( temp );			/* exists in v6 */
+
+    /* link once to get total size! */
+    if (!ld( temp, 0, func, file)) {
+	goto ld_error;
+    }
+
+    f = open(temp, O_RDONLY);
+    if (f < 0) {
+	/* XXX error message? */
+	goto ld_error;
+    }
+
+    if (read( f, &a, sizeof(a)) != sizeof(a)) {
+	/* XXX error message? */
+	goto header_error;
+    }
+
+    if (N_GETMAGIC(a) != OMAGIC) {
+	/* XXX error message? */
+    header_error:
+	close(f);
+    ld_error:
+	unlink(temp);
+	return NULL;			/* fail */
+    }
+    close(f);
+    unlink(temp);
+
+    len = N_SIZE(a);		      /* total size (code+data+bss) */
+
+    /* fix here for NMAGIC or ZMAGIC;  use valloc? */
+    data = malloc(len);
+    if (data == NULL) {
+	return NULL;
+    }
+
+    /* XXX need only zero bss! */
+    bzero( data, len );
+
+    /*
+     * could chain all of the following together in one big if stmt,
+     * but it would be a pain to debug!
+     */
+
+    /* re-link at new addr */
+    if (!ld( temp, data, fp->name, file) || (f = open(temp, 0)) < 0)
+	goto file_open_error;
+
+    if (read( f, &a, sizeof(a)) != sizeof(a))
+	goto data_read_error;
+
+    if (N_GETMAGIC(a) != OMAGIC || a.a_entry == 0 || N_SIZE(a) > len)
+	goto data_read_error;
+
+    if (read(f, data, len) != len) {
+    data_read_error:
+	close(f);
+    file_open_error:
+	unlink(temp);
+	free(data);
+	return NULL;
+    }
+    close(f);
+
+    *stash = data;			/* for os_unload_function */
+    return (void *)a.a_entry;
+}
+
+void
+os_unload_function(const char *name, void *stash) {
+    (void) name;
+    if (stash)
+	free(stash);
+}
+
+void
+os_unload_library(void *lib) {
+    free(lib);				/* strdup'ed */
+}

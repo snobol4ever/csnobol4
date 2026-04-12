@@ -1,0 +1,24 @@
+/README/1.1/Fri Dec 31 01:48:00 1993//
+/bal.c/1.7/Sun Sep 27 19:45:56 2020//
+/break.c/1.8/Thu Nov 19 02:31:31 2020//
+/compio_obj.c/1.11/Sat Nov 21 17:30:32 2020//
+/date.c/1.18/Sat Oct 17 20:06:14 2020//
+/dump.c/1.14/Tue Oct 13 04:47:53 2020//
+/endex.c/1.23/Thu Oct 15 00:29:44 2020//
+/hash.c/1.17/Wed Jan  4 02:01:02 2023//
+/init.c/1.139/Wed Jan  4 02:01:02 2023//
+/io.c/1.207/Thu Nov 26 17:15:09 2020//
+/lexcmp.c/1.8/Sun Sep 27 19:45:56 2020//
+/loadx.c/1.24/Thu Nov 19 02:48:12 2020//
+/ordvst.c/1.21/Tue Oct 13 04:47:53 2020//
+/pair.c/1.11/Sun Sep 27 19:45:56 2020//
+/pat.c/1.10/Sun Sep 27 19:45:56 2020//
+/pml.c/1.17/Sun Oct 18 21:20:53 2020//
+/realst.c/1.18/Tue Oct 13 04:47:53 2020//
+/replace.c/1.7/Sun Sep 27 19:45:56 2020//
+/stdio_obj.c/1.23/Tue Nov 17 19:24:36 2020//
+/str.c/1.26/Sun Oct 18 00:46:41 2020//
+/stream.c/1.29/Wed Jan  4 02:01:02 2023//
+/top.c/1.11/Sun Sep 27 19:45:56 2020//
+/tree.c/1.8/Sun Sep 27 19:45:56 2020//
+D

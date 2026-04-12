@@ -1,0 +1,63 @@
+# Build outputs
+snobol4
+isnobol4
+ssnobol4
+*.o
+*.a
+*.so
+*.lo
+*.la
+*.dylib
+
+# Autoconf / configure artifacts
+config.log
+config.status
+config.cache
+autom4te.cache/
+Makefile.in
+
+# Generated C files (from .sno generators)
+# data.c data.h data_init.c data_init.h equ.h globals.h
+# proc.h res.h static.h syn.c syn.h syn_init.h
+# are COMMITTED — they are the bootstrapped source
+# Only exclude truly transient generated files:
+*.tab.c
+*.tab.h
+lex.*.c
+
+# Packaging
+*.tar.gz
+*.tar.bz2
+*.zip
+*.deb
+*.rpm
+pkg/*.deb
+pkg/*.rpm
+pkg/*.tar.gz
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+\#*\#
+.#*
+*.orig
+*.rej
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+test/*.out
+test/*.diff
+timing/*.out
+
+# CVS (upstream uses CVS; keep CVS/ dir but ignore runtime files)
+CVS/Entries.Static
+
+# Installed files (if someone does make install into tree)
+/usr/

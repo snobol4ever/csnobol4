@@ -1,0 +1,16 @@
+*----------------------------------------------------------------------
+* test/fence_function/t06_with_assignment.sno
+* FENCE(P) combined with $ and . assignment — from corpus:
+*   FENCE(SPAN(digits &UCASE '_' &LCASE) | epsilon)
+*   used to build identifiers and capture them.
+*----------------------------------------------------------------------
+               alnum = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz'
+
+*   Identifier pattern: start char + FENCE(optional alnum tail)
+               S = 'hello_world rest'
+               S  POS(0) ANY(&UCASE &LCASE)  FENCE(SPAN(alnum) | '')  . id   :F(FAIL6)
+               OUTPUT = IDENT(id, 'hello_world') 'PASS t06: identifier capture via FENCE = ' id
+                                                            :S(END)
+               OUTPUT = 'FAIL t06: expected hello_world, got [' id ']'  :(END)
+FAIL6          OUTPUT = 'FAIL t06: match failed entirely'
+END

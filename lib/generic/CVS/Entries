@@ -1,0 +1,15 @@
+/dirname.c/1.1/Fri Nov  6 17:15:08 2020//
+/dynamic.c/1.6/Sun Sep 27 19:45:56 2020//
+/execute.c/1.9/Sun Sep 27 22:28:04 2020//
+/exists.c/1.5/Sun Sep 27 22:15:22 2020//
+/expops.c/1.19/Tue Oct 13 04:47:53 2020//
+/fisatty.c/1.6/Thu Oct  8 01:42:07 2020//
+/intspc.c/1.11/Tue Oct 13 04:47:53 2020//
+/mstime.c/1.7/Sun Sep 27 22:15:22 2020//
+/newer.c/1.1/Thu Oct 22 00:55:11 2020//
+/popen.c/1.7/Sun Oct 18 15:35:48 2020//
+/spcint.c/1.9/Thu Nov 19 02:31:31 2020//
+/spreal.c/1.8/Tue Oct 13 04:47:53 2020//
+/suspend.c/1.5/Sun Sep 27 22:15:22 2020//
+/sys.c/1.7/Sun Sep 27 22:15:22 2020//
+D

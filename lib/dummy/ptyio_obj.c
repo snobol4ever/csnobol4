@@ -1,0 +1,25 @@
+/*
+ * $Id: ptyio_obj.c,v 1.7 2020-10-24 05:52:25 phil Exp $
+ * ptyio_open -- dummy version
+ * Phil Budne
+ * 2020-08-20
+ */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <stdio.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>			/* ssize_t */
+#endif
+
+#include "io_obj.h"			/* prototype */
+
+struct io_obj *
+ptyio_open(char *path, int flags, int dir) {
+    if (path[0] != '|' || path[1] != '|')
+	return NOMATCH;
+
+    return NULL;
+}

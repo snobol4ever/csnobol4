@@ -1,0 +1,38 @@
+*----------------------------------------------------------------------
+* test/fence_function/t08_decimal_literal.sno
+* Directly from corpus expression.sno:
+*   DECIMAL_LITERAL = ANY('123456789') FENCE(SPAN('0123456789') | '')
+*   IDENTIFIER      = ANY(&UCASE '_' &LCASE) FENCE(SPAN(alnum) | '')
+*
+* These are the canonical real-world FENCE(P) patterns. They should
+* work identically to SPITBOL.
+*----------------------------------------------------------------------
+               digits  = '0123456789'
+               alnum   = digits 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz'
+               &ANCHOR = 1
+
+*   DECIMAL_LITERAL
+               T = '42rest'
+               T  ANY('123456789') FENCE(SPAN(digits) | '') . n    :F(FAIL8A)
+               OUTPUT = IDENT(n, '42') 'PASS t08a: decimal literal = [' n ']'
+                                                                   :S(T8B)
+               OUTPUT = 'FAIL t08a: expected 42 got [' n ']'      :(END)
+FAIL8A         OUTPUT = 'FAIL t08a: decimal literal match failed'  :(END)
+
+*   DECIMAL_LITERAL single digit (empty FENCE branch)
+T8B            T2 = '7 rest'
+               T2  ANY('123456789') FENCE(SPAN(digits) | '') . n   :F(FAIL8B)
+               OUTPUT = IDENT(n, '7') 'PASS t08b: single digit = [' n ']'
+                                                                   :S(T8C)
+               OUTPUT = 'FAIL t08b: expected 7 got [' n ']'       :(END)
+FAIL8B         OUTPUT = 'FAIL t08b: single digit match failed'     :(END)
+
+*   IDENTIFIER
+T8C            T3 = 'myVar123 = 5'
+               T3  ANY(&UCASE '_' &LCASE) FENCE(SPAN(alnum) | '') . id  :F(FAIL8C)
+               OUTPUT = IDENT(id, 'myVar123') 'PASS t08c: identifier = [' id ']'
+                                                                   :S(END)
+               OUTPUT = 'FAIL t08c: expected myVar123 got [' id ']'
+                                                                   :(END)
+FAIL8C         OUTPUT = 'FAIL t08c: identifier match failed'
+END

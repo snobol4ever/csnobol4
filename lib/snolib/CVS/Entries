@@ -1,0 +1,25 @@
+/atan.c/1.5/Thu Nov 19 02:31:31 2020//
+/chop.c/1.8/Thu Nov 19 02:31:31 2020//
+/cos.c/1.11/Thu Nov 19 02:31:31 2020//
+/delete.c/1.11/Thu Nov 19 02:31:31 2020//
+/environ.c/1.2/Tue Feb  5 17:51:00 2002//
+/exit.c/1.11/Thu Nov 19 02:31:31 2020//
+/exp.c/1.12/Thu Nov 19 02:31:31 2020//
+/file.c/1.19/Wed Jan  4 01:32:20 2023//
+/findunit.c/1.8/Thu Nov 19 02:31:31 2020//
+/getenv.c/1.9/Sat Oct 17 00:02:42 2020//
+/getstring.c/1.17/Sat Nov 20 18:19:39 2021//
+/handle.c/1.34/Thu Feb 17 01:44:12 2022//
+/host.c/1.43/Sun Nov 15 22:39:02 2020//
+/host.h/1.26/Sat Sep  2 19:39:18 2023//
+/log.c/1.8/Thu Nov 19 02:31:31 2020//
+/ord.c/1.7/Thu Nov 19 02:31:31 2020//
+/rename.c/1.12/Thu Nov 19 02:31:31 2020//
+/retstring.c/1.18/Mon Oct 19 01:08:18 2020//
+/serv.c/1.22/Thu Nov 19 02:31:31 2020//
+/sin.c/1.9/Thu Nov 19 02:31:31 2020//
+/sqrt.c/1.10/Thu Nov 19 02:31:31 2020//
+/sset.c/1.9/Thu Nov 19 02:31:31 2020//
+/system.c/1.7/Sat Oct 17 00:02:42 2020//
+/tan.c/1.11/Thu Nov 19 02:31:31 2020//
+D

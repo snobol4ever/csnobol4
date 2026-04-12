@@ -1,0 +1,40 @@
+*----------------------------------------------------------------------
+* test/fence_function/t09_nested_fence.sno
+* From corpus: nested FENCE patterns like
+*   FENCE(SPAN(digits) '.' FENCE(SPAN(digits) | '') | SPAN(digits))
+*   (real number pattern, expression.sno)
+*
+* Tests that PDLHED save/restore is properly nested.
+*----------------------------------------------------------------------
+               digits = '0123456789'
+
+*   Real number: digits optionally followed by '.' and optional digits
+*   Modeled after corpus expression.sno Real pattern
+               Real =  SPAN(digits) '.' FENCE(SPAN(digits) | '')
++                   |  SPAN(digits)
+
+*   Test: '3.14rest' -> should match '3.14'
+               S = '3.14rest'
+               &ANCHOR = 1
+               S  FENCE(Real) . n                                  :F(FAIL9A)
+               OUTPUT = IDENT(n, '3.14') 'PASS t09a: real number = [' n ']'
+                                                                   :S(T9B)
+               OUTPUT = 'FAIL t09a: expected 3.14 got [' n ']'    :(END)
+FAIL9A         OUTPUT = 'FAIL t09a: real number match failed'      :(END)
+
+*   Test: '42rest' -> should match '42' (integer branch)
+T9B            S2 = '42rest'
+               S2  FENCE(Real) . n                                 :F(FAIL9B)
+               OUTPUT = IDENT(n, '42') 'PASS t09b: integer via Real = [' n ']'
+                                                                   :S(T9C)
+               OUTPUT = 'FAIL t09b: expected 42 got [' n ']'      :(END)
+FAIL9B         OUTPUT = 'FAIL t09b: integer match failed'          :(END)
+
+*   Test: '3.' -> should match '3.' (dot with empty fraction)
+T9C            S3 = '3.rest'
+               S3  FENCE(Real) . n                                 :F(FAIL9C)
+               OUTPUT = IDENT(n, '3.') 'PASS t09c: trailing dot = [' n ']'
+                                                                   :S(END)
+               OUTPUT = 'FAIL t09c: expected 3. got [' n ']'      :(END)
+FAIL9C         OUTPUT = 'FAIL t09c: trailing dot match failed'
+END
