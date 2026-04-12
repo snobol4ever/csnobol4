@@ -1071,6 +1071,14 @@ struct res {
 # define ERORCL	((ptr_t)res.erorcl)
     struct descr fncfcl[1];
 # define FNCFCL	((ptr_t)res.fncfcl)
+    struct descr fncacl[1];
+# define FNCACL	((ptr_t)res.fncacl)
+    struct descr fncbcl[1];
+# define FNCBCL	((ptr_t)res.fncbcl)
+    struct descr fnccl[1];
+# define FNCCL	((ptr_t)res.fnccl)
+    struct descr fncdcl[1];
+# define FNCDCL	((ptr_t)res.fncdcl)
     struct descr fnmecl[1];
 # define FNMECL	((ptr_t)res.fnmecl)
     struct descr gotgcl[1];
@@ -1945,7 +1953,7 @@ struct res {
 # define FTBLND	INITLS
     struct descr initls[9];
 # define INITLS	((ptr_t)res.initls)
-    struct descr fnlist[213+40*2];
+    struct descr fnlist[215+40*2];
 # define FNLIST	((ptr_t)res.fnlist)
 # define FNCPLE	OPTBL
     struct descr optbl[1];
@@ -2126,6 +2134,16 @@ struct res {
 # define FNCEFN	((ptr_t)res.fncefn)
     struct descr fncffn[1];
 # define FNCFFN	((ptr_t)res.fncffn)
+    struct descr fncafn[1];
+# define FNCAFN	((ptr_t)res.fncafn)
+    struct descr fncbfn[1];
+# define FNCBFN	((ptr_t)res.fncbfn)
+    struct descr fncfn[1];
+# define FNCFN	((ptr_t)res.fncfn)
+    struct descr fncdfn[1];
+# define FNCDFN	((ptr_t)res.fncdfn)
+    struct descr fncpfn[1];
+# define FNCPFN	((ptr_t)res.fncpfn)
     struct descr sucffn[1];
 # define SUCFFN	((ptr_t)res.sucffn)
     struct spec abndsp[1];
@@ -2491,6 +2509,10 @@ struct res {
 # define FAILPT	((ptr_t)res.failpt)
     struct descr fncept[4];
 # define FNCEPT	((ptr_t)res.fncept)
+    struct descr fncapt[4];
+# define FNCAPT	((ptr_t)res.fncapt)
+    struct descr fnccpt[4];
+# define FNCCPT	((ptr_t)res.fnccpt)
     struct descr rempt[5];
 # define REMPT	((ptr_t)res.rempt)
     struct descr starpt[12];

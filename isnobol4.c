@@ -1,4 +1,4 @@
-/* generated from v311.sil by genc.sno on 05/19/2025 00:09:27 */
+/* generated from v311.sil by genc.sno on 04/12/2026 18:41:54 */
 
 #define INLINING
 
@@ -11544,6 +11544,14 @@ L_PATBRA:
 	goto L_FNCE;
     case 36:
 	goto L_SUCF;
+    case 37:
+	goto L_FNCA;
+    case 38:
+	goto L_FNCB;
+    case 39:
+	goto L_FNCC;
+    case 40:
+	goto L_FNCD;
     }
     BRANCH(INTR13)
     /*_*/
@@ -12237,6 +12245,103 @@ L_FNCE:
     D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
     D_A(LENFCL) = 1;
     goto L_SCOK;
+    /*_*/
+L_FNCA:
+    PUSH(MAXLEN);
+    PUSH(LENFCL);
+    PUSH(PDLPTR);
+    PUSH(PDLHED);
+    PUSH(NAMICL);
+    PUSH(NHEDCL);
+    if (D_A(PDLPTR) > D_A(PDLEND))
+	BRANCH(INTR31)
+    D_A(PDLPTR) += 3*DESCR;
+    D(D_A(PDLPTR) + DESCR) = D(FNCBCL);
+    D_A(TMVAL) = S_L(TXSP);
+    D_F(TMVAL) = D_V(TMVAL) = 0;
+    D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+    D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
+    D(PDLHED) = D(PDLPTR);
+    D(NHEDCL) = D(NAMICL);
+    goto L_SCOK;
+    /*_*/
+L_FNCB:
+    POP(NHEDCL);
+    POP(NAMICL);
+    POP(PDLHED);
+    POP(PDLPTR);
+    POP(LENFCL);
+    POP(MAXLEN);
+    BRANCH(FAIL)
+    /*_*/
+L_FNCC:
+    D(PDLPTR) = D(PDLHED);
+    D(NAMICL) = D(NHEDCL);
+    POP(NHEDCL);
+    POP(NAMICL);
+    POP(PDLHED);
+    POP(PDLPTR);
+    POP(LENFCL);
+    POP(MAXLEN);
+    if (D_PTR(PDLPTR) < D_PTR(PDLHED))
+	BRANCH(INTR13)
+    else
+	goto L_FNCC1;
+L_FNCC1:
+    D_A(PDLPTR) += 3*DESCR;
+    if (D_A(PDLPTR) > D_A(PDLEND))
+	BRANCH(INTR31)
+    D(D_A(PDLPTR) + DESCR) = D(FNCDCL);
+    D_A(TMVAL) = S_L(TXSP);
+    D_F(TMVAL) = D_V(TMVAL) = 0;
+    D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+    D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
+    goto L_SCOK;
+    /*_*/
+L_FNCD:
+    D(PDLPTR) = D(PDLHED);
+    D(NAMICL) = D(NHEDCL);
+    BRANCH(FAIL)
+    /*_*/
+L_FNCP:
+    SAVSTK();
+    if (PATVAL(XPTR) == 1)
+	BRANCH(FAIL)
+    if (D_V(XPTR) == P)
+	goto L_FNCPP;
+    if (D_V(XPTR) != S)
+	BRANCH(INTR1)
+    X_LOCSP(TSP,XPTR);
+    D_A(TMVAL) = S_L(TSP);
+    D_F(TMVAL) = D_V(TMVAL) = 0;
+    SAVSTK();
+    PUSH(LNODSZ);
+    BLOCK(TPTR);
+    MAKNOD(XPTR,TPTR,TMVAL,ZEROCL,CHRCL,XPTR);
+L_FNCPP:
+    D_A(XSIZ) = D_V(D_A(XPTR));
+    D_F(XSIZ) = D_V(XSIZ) = 0;
+    D_A(TSIZ) = D_V(D_A(FNCAPT));
+    D_F(TSIZ) = D_V(TSIZ) = 0;
+    D_A(ZSIZ) = D_V(D_A(FNCCPT));
+    D_F(ZSIZ) = D_V(ZSIZ) = 0;
+    D_A(TSIZ) += D_A(XSIZ);
+    D_A(TSIZ) += D_A(ZSIZ);
+    D_V(TSIZ) = P;
+    SAVSTK();
+    PUSH(TSIZ);
+    BLOCK(TPTR);
+    D(ZPTR) = D(TPTR);
+    D_A(TSIZ) = D_V(D_A(FNCAPT));
+    D_F(TSIZ) = D_V(TSIZ) = 0;
+    CPYPAT(TPTR,FNCAPT,ZEROCL,ZEROCL,ZEROCL,TSIZ);
+    D_A(YSIZ) = D_V(D_A(FNCCPT));
+    D_F(YSIZ) = D_V(YSIZ) = 0;
+    D(ZSIZ) = D(TSIZ);
+    D_A(ZSIZ) += D_A(XSIZ);
+    CPYPAT(TPTR,XPTR,ZEROCL,TSIZ,ZSIZ,XSIZ);
+    CPYPAT(TPTR,FNCCPT,ZEROCL,ZSIZ,ZEROCL,YSIZ);
+    BRANCH(RTZPTR)
     /*_*/
 L_NME:
     D_A(PDLPTR) += 3*DESCR;

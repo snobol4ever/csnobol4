@@ -1,6 +1,6 @@
 /*
- * generated Mon May 19 00:09:22 EDT 2025
- * on mail.ultimate.com (FreeBSD)
+ * generated Sun Apr 12 18:47:02 UTC 2026
+ * on runsc (Linux)
  * by $Id: configure,v 1.432 2025-05-18 23:42:16 phil Exp $
  */
 

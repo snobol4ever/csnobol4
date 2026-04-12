@@ -1,0 +1,9 @@
+# config generated Sun Apr 12 18:47:02 UTC 2026
+	MAN3DIR = '/usr/local/man/man3'
+	SLEEP_C = 'posix/sleep.c'
+	STAT_CFLAGS = '-Dst_atimensec=st_mtim.tv_nsec -Dst_ctimensec=st_ctim.tv_nsec -Dst_mtimensec=st_mtim.tv_nsec'
+	TIME_CFLAGS = ' -DHAVE_SLEEP -DHAVE_TM_GMTOFF -DHAVE_STRPTIME -DHAVE_TIMEGM  -DHAVE_CLOCK_GETTIME_REALTIME'
+	RANDOM_CFLAGS = '  -DHAVE_CLOCK_GETTIME_REALTIME'
+	NDBM_INCLUDE = "sdbm"
+	NDBM_SRCS = ",sdbm/sdbm.c,sdbm/sdbm_hash.c,sdbm/sdbm_pair.c"
+	NDBM_CFLAGS = '-DHAVE_SDBM_H -DDUFF'
