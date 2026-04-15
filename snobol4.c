@@ -2,6 +2,14 @@
 
 # include "mlink.h"
 # include "parms.h"
+
+/* IM-15b: per-statement hook for in-process sync monitor.
+ * Defined in csnobol4_shim.c (one4all) when WITH_CSNOBOL4 is set.
+ * When NULL (normal CSNOBOL4 standalone builds), zero overhead. */
+typedef void (*csn_step_fn)(int stno, void *arg);
+extern csn_step_fn g_csn_step_hook;
+extern void       *g_csn_step_arg;
+extern int         g_csn_stno;
 int
 BEGIN(ret_t retval) {
     ENTRY(BEGIN)
@@ -2466,6 +2474,9 @@ INIT(ret_t retval) {
     if (D_A(EXNOCL) >= D_A(EXLMCL))
 	BRANCH(EXEX)
     D_A(EXNOCL)++;
+    /* IM-15b: in-process sync monitor hook — zero cost when g_csn_step_hook == NULL */
+    if (g_csn_step_hook)
+	g_csn_step_hook(++g_csn_stno, g_csn_step_arg);
     if (D_A(TRAPCL) <= 0)
 	BRANCH(RTNUL3)
     if (!LOCAPT(ATPTR,TKEYL,STNOKY))
