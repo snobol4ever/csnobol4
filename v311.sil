@@ -4091,9 +4091,8 @@ FNCE   XPROC   ,		   Procedure for matching FENCE	[PLB67]
 *      FENCE(P) — enter node
 *
 FNCA   XPROC   ,		   Enter FENCE(P) — save outer PDLHED, push FNCB trap
-*				   SN-26-bridge-coverage-i: cstack PUSH was unsafe under
-*				   nested FENCE — see lib/pat.c fnc_save_push for audit.
-       XCALLC  fnc_save_push,(0)
+       PUSH    (MAXLEN,LENFCL,PDLPTR,PDLHED,NAMICL,NHEDCL)
+*				   Save outer PDL state on history list
        ACOMP   PDLPTR,PDLEND,INTR31
 *				   Check for overflow
        INCRA   PDLPTR,3*DESCR	   Make room for FNCB trap entry
@@ -4110,12 +4109,8 @@ FNCA   XPROC   ,		   Enter FENCE(P) — save outer PDLHED, push FNCB trap
 *      FENCE(P) — inner fail trap
 *
 FNCB   XPROC   ,		   Inner fail: P exhausted — restore outer PDLHED, fail out
-*				   SN-26-bridge-coverage-i: cstack POP -> XCALLC.
-*				   On entry SALT2 has DECRA'd PDLPTR by 3*DESCR, so
-*				   PDLPTR is back at its pre-FNCA value.  LENFCL was
-*				   restored by SALT1 from trap-entry slot 3.  Only
-*				   PDLHED and NAMICL still need restoring.
-       XCALLC  fnc_save_pop,(0)
+       POP     (NHEDCL,NAMICL,PDLHED,PDLPTR,LENFCL,MAXLEN)
+*				   Restore outer PDL state
        BRANCH  FAIL		   Propagate failure outward
 *_
 *---------------------------------------------------------------------*
@@ -4123,18 +4118,10 @@ FNCB   XPROC   ,		   Inner fail: P exhausted — restore outer PDLHED, fail out
 *      FENCE(P) — exit node
 *
 FNCC   XPROC   ,		   Exit FENCE(P) — P matched; restore outer PDLHED
-*				   SN-26-bridge-coverage-i: cstack POP -> XCALLC.
-*				   On entry PDLPTR is wherever P left it (above FNCA-time
-*				   PDLHED).  MOVD PDLPTR,PDLHED snaps PDLPTR back to the
-*				   FNCA post-INCRA value (= top of trap entry).  We then
-*				   restore LENFCL from trap-entry slot 3, restore PDLHED
-*				   and NAMICL via XCALLC, and DECRA PDLPTR by 3*DESCR to
-*				   walk past the trap entry to its pre-FNCA value.
        MOVD    PDLPTR,PDLHED	   Pop inner history entries
-       GETDC   LENFCL,PDLPTR,3*DESCR
-*				   Restore outer LENFCL from trap-entry slot 3
-       XCALLC  fnc_save_pop,(0)
-       DECRA   PDLPTR,3*DESCR	   Walk past trap entry — PDLPTR now pre-FNCA
+       MOVD    NAMICL,NHEDCL	   Pop inner name entries
+       POP     (NHEDCL,NAMICL,PDLHED,PDLPTR,LENFCL,MAXLEN)
+*				   Restore outer PDL state
        PCOMP   PDLPTR,PDLHED,FNCC1,FNCC1,INTR13
 *				   Did P leave any alternatives?
 FNCC1  INCRA   PDLPTR,3*DESCR	   Make room for seal entry
