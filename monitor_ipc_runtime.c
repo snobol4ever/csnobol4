@@ -389,12 +389,23 @@ int monitor_emit_call(void *name_d_void) {
     return 1;
 }
 
-/* monitor_emit_return(name_descr, retval_descr) — RETURN event.
- * name_descr names the function; retval_descr carries the return value. */
-int monitor_emit_return(void *name_d_void, void *retval_d_void) {
+/* monitor_emit_return(name_descr, rtntype_descr) — RETURN event.
+ * name_descr names the function.
+ * rtntype_descr carries SIL's &RTNTYPE — a NAME descriptor pointing to one
+ * of RETURN / NRETURN / FRETURN — i.e. *how* the function exited, not the
+ * function's result value.  The function's actual return value, if any,
+ * is delivered separately via a preceding monitor_emit_value(fn_name, ...)
+ * event because in SIL the function-name variable is where the result is
+ * stored (e.g. `SQR = N * N` inside SQR's body).
+ *
+ * Wire-format consumer note: a RETURN record carrying STRING("RETURN")
+ * means "function returned normally"; STRING("FRETURN") means "function
+ * failed"; STRING("NRETURN") means "name-return".  The preceding VALUE
+ * record names the result. */
+int monitor_emit_return(void *name_d_void, void *rtntype_d_void) {
     if (!monitor_init()) return 1;
     const struct mir_descr *nd = (const struct mir_descr *)name_d_void;
-    const struct mir_descr *rd = (const struct mir_descr *)retval_d_void;
+    const struct mir_descr *rd = (const struct mir_descr *)rtntype_d_void;
     if (!nd || !rd) return 1;
 
     const char *np = _d_sptr(nd);

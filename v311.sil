@@ -3508,6 +3508,7 @@ SJSRS  GETLG   XPTR,TAILSP	   Get length of tail
        APDSP   TSP,TAILSP	   Append tail
        RCALL   ZPTR,GNVARS,XPTR	   Enter string into storage
 SJSRV1 PUTDC   WPTR,DESCR,ZPTR	   Assign value to subject name
+       XCALLC  monitor_emit_value,(WPTR,ZPTR)   SN-26-csn-bridge-b
        AEQLC   OUTSW,0,,SJSRV2	   Check &OUTPUT
        LOCAPV  YPTR,OUTATL,WPTR,SJSRV2
 *				   Look for output association
@@ -4468,7 +4469,9 @@ DEFFGO PUSH    (FILENM,LNNOCL,FRTNCL,STNOCL,OCICL,OCBSCL,ZCL,ZCL) [PLB38]
        RCALL   ,FENTR2,(ATPTR),(INTR10,INTR10)
 *				   Perform function trace
        POP     ZCL		   Restore definition block
-DEFF18 ACOMPC  TRAPCL,0,,DEFF19,DEFF19
+DEFF18 GETDC   ATPTR,ZCL,2*DESCR   SN-26-csn-bridge-b: get fn name for catch-all
+       XCALLC  monitor_emit_call,(ATPTR)   SN-26-csn-bridge-b
+       ACOMPC  TRAPCL,0,,DEFF19,DEFF19
 *				   Check &TRACE
        GETDC   ATPTR,ZCL,2*DESCR   Get function name
        LOCAPT  ATPTR,TFENTL,ATPTR,DEFF19
@@ -4497,7 +4500,9 @@ DEFFS1 POP     ZCL		   Restore definition block
        RCALL   ,FNEXT2,(ATPTR),(INTR10,INTR10)
 *				   Perform function trace
        POP     ZCL		   Restore definition block
-DEFF20 ACOMPC  TRAPCL,0,,DEFFS2,DEFFS2
+DEFF20 GETDC   ATPTR,ZCL,2*DESCR   SN-26-csn-bridge-b: get fn name for catch-all
+       XCALLC  monitor_emit_return,(ATPTR,RETPCL)   SN-26-csn-bridge-b
+       ACOMPC  TRAPCL,0,,DEFFS2,DEFFS2
 *				   Check &TRACE
        GETDC   ATPTR,ZCL,2*DESCR   Get function name
        LOCAPT  ATPTR,TFEXTL,ATPTR,DEFFS2

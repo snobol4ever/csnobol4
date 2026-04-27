@@ -4159,6 +4159,8 @@ L_SJSRS:
     GNVARS(ZPTR);
 L_SJSRV1:
     D(D_A(WPTR) + DESCR) = D(ZPTR);
+    /* SN-26-csn-bridge-b: hand-applied here to mirror v311.sil edit. */
+    monitor_emit_value(WPTR, ZPTR);
     if (D_A(OUTSW) == 0)
 	goto L_SJSRV2;
     if (!LOCAPV(YPTR,OUTATL,WPTR))
@@ -5625,9 +5627,11 @@ L_DEFFGO:
     }
     POP(ZCL);
 L_DEFF18:
+    /* SN-26-csn-bridge-b: hand-applied catch-all CALL emit, mirrors v311.sil. */
+    D(ATPTR) = D(D_A(ZCL) + 2*DESCR);
+    monitor_emit_call(ATPTR);
     if (D_A(TRAPCL) <= 0)
 	goto L_DEFF19;
-    D(ATPTR) = D(D_A(ZCL) + 2*DESCR);
     if (!LOCAPT(ATPTR,TFENTL,ATPTR))
 	goto L_DEFF19;
     PUSH(OCBSCL);
@@ -5672,9 +5676,11 @@ L_DEFFS1:
     }
     POP(ZCL);
 L_DEFF20:
+    /* SN-26-csn-bridge-b: hand-applied catch-all RETURN emit, mirrors v311.sil. */
+    D(ATPTR) = D(D_A(ZCL) + 2*DESCR);
+    monitor_emit_return(ATPTR, RETPCL);
     if (D_A(TRAPCL) <= 0)
 	goto L_DEFFS2;
-    D(ATPTR) = D(D_A(ZCL) + 2*DESCR);
     if (!LOCAPT(ATPTR,TFEXTL,ATPTR))
 	goto L_DEFFS2;
     PUSH(RETPCL);
