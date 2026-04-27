@@ -684,11 +684,13 @@ init_signals(void) {
      */
     signal( SIGINT, sig_catch );
 
-    /* catch bad memory references */
-    signal( SIGSEGV, err_catch );
+    /* catch bad memory references — bypass for debugging if env set */
+    if (!getenv("CSN_NO_SEGV_HANDLER")) {
+        signal( SIGSEGV, err_catch );
 #ifdef SIGBUS
-    signal( SIGBUS, err_catch );
+        signal( SIGBUS, err_catch );
 #endif /* SIGBUS defined */
+    }
 
     /* catch math errors */
 #ifdef SIGFPE

@@ -12294,8 +12294,7 @@ L_FNCC:
     POP(MAXLEN);
     if (D_PTR(PDLPTR) < D_PTR(PDLHED))
 	BRANCH(INTR13)
-    if (D_PTR(PDLPTR) == D_PTR(PDLHED))
-	goto L_SCOK;
+    /* SN-26-bridge-coverage-i: SIL says equal also pushes seal (DOCMP3 G,E,L) */
 L_FNCC1:
     D_A(PDLPTR) += 3*DESCR;
     if (D_A(PDLPTR) > D_A(PDLEND))
