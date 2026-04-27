@@ -5936,6 +5936,7 @@ ASGNVN AEQLC   INSW,0,,ASGNV1	   Check &INPUT
 *_
 ASGNV1 GETDC   YPTR,YPTR,DESCR	   Get value
 ASGNVV PUTDC   XPTR,DESCR,YPTR	   Perform assignment
+       XCALLC  monitor_emit_value,(XPTR,YPTR)   SN-26-csn-bridge-a-xcallc
        AEQLC   OUTSW,0,,ASGN1	   Check &OUTPUT
        LOCAPV  ZPTR,OUTATL,XPTR,ASGN1
 *				   Look for output association

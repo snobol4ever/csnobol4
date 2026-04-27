@@ -8584,6 +8584,8 @@ L_ASGNV1:
     D(YPTR) = D(D_A(YPTR) + DESCR);
 L_ASGNVV:
     D(D_A(XPTR) + DESCR) = D(YPTR);
+    /* SN-26-csn-bridge-a-xcallc: hand-applied here to mirror v311.sil edit. */
+    monitor_emit_value(XPTR, YPTR);
     if (D_A(OUTSW) == 0)
 	goto L_ASGN1;
     if (!LOCAPV(ZPTR,OUTATL,XPTR))
