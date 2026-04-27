@@ -61,3 +61,6 @@ CVS/Entries.Static
 
 # Installed files (if someone does make install into tree)
 /usr/
+snobol4_dbg
+xsnobol4
+build.c
