@@ -221,6 +221,7 @@ OBJS=	main.o $(SNOBOL4).o data.o data_init.o syn.o bal.o \
 	atan.o chop.o cos.o delete.o execute.o exists.o \
 	exit.o exp.o file.o findunit.o host.o ord.o log.o rename.o \
 	serv.o sin.o sqrt.o sset.o sys.o tan.o \
+	monitor_ipc_runtime.o \
 	$(AUX_OBJS)
 
 # from configure ADD_SRCS
@@ -573,6 +574,11 @@ getline.o: $(GETLINE_C)
 
 bufio_obj.o: $(BUFIO_OBJ_C)
 	$(CC) $(CFLAGS) -c $(BUFIO_OBJ_C)
+
+# SN-26-csn-bridge-a: sync-step monitor IPC runtime (statically linked).
+# No deps on csnobol4 internal headers — file is self-contained.
+monitor_ipc_runtime.o: $(SRCDIR)monitor_ipc_runtime.c
+	$(CC) $(CFLAGS) -c $(SRCDIR)monitor_ipc_runtime.c
 
 memio_obj.o: $(MEMIO_OBJ_C)
 	$(CC) $(CFLAGS) -c $(MEMIO_OBJ_C)
