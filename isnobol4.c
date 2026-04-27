@@ -11183,6 +11183,8 @@ L_NMD5:
     GENVAR(VVAL);
 L_NMD4:
     D(D_A(TVAL) + DESCR) = D(VVAL);
+    /* SN-26-bridge-coverage-a: hand-applied catch-all VALUE emit at pattern .-capture commit, mirrors v311.sil. */
+    monitor_emit_value(TVAL, VVAL);
     if (D_A(OUTSW) == 0)
 	goto L_NMD3;
     if (!LOCAPV(ZPTR,OUTATL,TVAL))
@@ -11988,6 +11990,8 @@ L_ATP1:
     D_F(NVAL) = D_V(NVAL) = 0;
     D_V(NVAL) = I;
     D(D_A(XPTR) + DESCR) = D(NVAL);
+    /* SN-26-bridge-coverage-a: hand-applied catch-all VALUE emit at @-capture commit, mirrors v311.sil. */
+    monitor_emit_value(XPTR, NVAL);
     if (D_A(OUTSW) == 0)
 	goto L_ATP2;
     if (!LOCAPV(ZPTR,OUTATL,XPTR))
@@ -12401,6 +12405,8 @@ L_ENMI5:
     GENVAR(VVAL);
 L_ENMI3:
     D(D_A(YPTR) + DESCR) = D(VVAL);
+    /* SN-26-bridge-coverage-a: hand-applied catch-all VALUE emit at $ immediate-capture commit, mirrors v311.sil. */
+    monitor_emit_value(YPTR, VVAL);
     if (D_A(OUTSW) == 0)
 	goto L_ENMI4;
     if (!LOCAPV(ZPTR,OUTATL,YPTR))

@@ -347,6 +347,54 @@ static void emit_descr_value(uint32_t kind, uint32_t name_id,
  * but we still return 1 so SIL flow doesn't take a SIL-level FAIL branch.
  *==========================================================================*/
 
+/*============================================================================
+ * lvalue name extraction — robust against NAME descriptors that point into
+ * the middle of array element storage or table slots (where there is no
+ * SCBLK header and no name string at the +BCDFLD offset).
+ *
+ * For SNOBOL4 lvalue forms:
+ *   X = ...        → STRING/NAME descr at named vrblk; name string valid.
+ *   PAT . X        → same as above (NAME of named variable).
+ *   PAT $ X        → same.
+ *   @X             → same.
+ *   A<i,j> = ...   → NAME descr from ITEM proc, points into array storage.
+ *                    No name string at +BCDFLD; reading there gives garbage.
+ *   T<'k'> = ...   → same shape as array element.
+ *
+ * Heuristic: validate the candidate name characters against the length
+ * implied by the descriptor.  A real SNOBOL4 identifier consists of
+ * printable ASCII (letters, digits, underscore, dot — typically).  If
+ * the bytes at +BCDFLD don't look like a valid identifier of that
+ * length, treat as anonymous lvalue and intern the sentinel "<lval>"
+ * so the wire stream stays well-formed and both runtimes converge on
+ * the same record shape for these stores.
+ *
+ * Returns name_id (never MW_NAME_ID_NONE for a successfully initialized
+ * monitor).
+ *==========================================================================*/
+static int looks_like_identifier(const char *p, int n) {
+    if (n <= 0 || n > 256) return 0;
+    if (!p) return 0;
+    for (int i = 0; i < n; i++) {
+        unsigned char c = (unsigned char)p[i];
+        if (c < 0x20 || c >= 0x7f) return 0;   /* non-printable → reject */
+    }
+    return 1;
+}
+
+static uint32_t lvalue_name_id(const struct mir_descr *nd) {
+    const char *np = _d_sptr(nd);
+    int         nl = _d_slen(nd);
+    if (looks_like_identifier(np, nl)) {
+        return intern_name(np, nl);
+    }
+    /* Anonymous lvalue (array element, table slot, etc.).  Use a stable
+     * sentinel so the wire stream is well-formed and both runtimes
+     * converge on the same record. */
+    static const char sentinel[] = "<lval>";
+    return intern_name(sentinel, (int)(sizeof(sentinel) - 1));
+}
+
 /* monitor_emit_value(name_descr, value_descr) — VALUE event.
  * name_descr is a STRING descriptor giving the variable name.
  * value_descr is the new value being assigned. */
@@ -356,14 +404,7 @@ int monitor_emit_value(void *name_d_void, void *value_d_void) {
     const struct mir_descr *vd = (const struct mir_descr *)value_d_void;
     if (!nd || !vd) return 1;
 
-    /* Variable name — we accept either a STRING descr or a NAME descr.
-     * Both have a SCBLK-style block at a.i with len in v (block header). */
-    const char *np = _d_sptr(nd);
-    int         nl = _d_slen(nd);
-    if (!np && nl == 0) np = "";   /* allow zero-len names */
-    if (!np) return 1;             /* malformed descr — drop silently */
-
-    uint32_t name_id = intern_name(np, nl);
+    uint32_t name_id = lvalue_name_id(nd);
     if (name_id == MW_NAME_ID_NONE) return 1;
 
     emit_descr_value(MWK_VALUE, name_id, vd);

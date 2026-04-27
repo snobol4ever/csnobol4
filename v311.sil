@@ -3927,6 +3927,7 @@ ATP1   VEQLC   XPTR,E,,ATPEXN	   EXPRESSION must be evaluated
        GETLG   NVAL,TXSP	   Get length of text matched
        SETVC   NVAL,I		   Set INTEGER data type
        PUTDC   XPTR,DESCR,NVAL	   Assign as value of variable X
+       XCALLC  monitor_emit_value,(XPTR,NVAL)   SN-26-bridge-coverage-a
        AEQLC   OUTSW,0,,ATP2	   Check &OUTPUT
        LOCAPV  ZPTR,OUTATL,XPTR,ATP2
 *				   Look for output association
@@ -4252,6 +4253,7 @@ ENMI5  VEQLC   YPTR,K,,ENMIC	   Check for KEYWORD data type
        RCALL   VVAL,GENVAR,(TSPPTR)
 *				   Generate variable
 ENMI3  PUTDC   YPTR,DESCR,VVAL	   Perform assignment
+       XCALLC  monitor_emit_value,(YPTR,VVAL)   SN-26-bridge-coverage-a
        AEQLC   OUTSW,0,,ENMI4	   Check &OUTPUT
        LOCAPV  ZPTR,OUTATL,YPTR,ENMI4
 *				   Look for output association
@@ -6164,6 +6166,7 @@ NMD5   VEQLC   TVAL,K,,NMDIC	   Is variable KEYWORD?
        RCALL   VVAL,GENVAR,(TSPPTR)
 *				   Generate string
 NMD4   PUTDC   TVAL,DESCR,VVAL	   Assign value
+       XCALLC  monitor_emit_value,(TVAL,VVAL)   SN-26-bridge-coverage-a
        AEQLC   OUTSW,0,,NMD3	   Check &OUTPUT
        LOCAPV  ZPTR,OUTATL,TVAL,NMD3
 *				   Look for output association
