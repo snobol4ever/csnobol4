@@ -5086,57 +5086,60 @@ L_FNCE:
     goto L_SCOK;
     /*_*/
 L_FNCA:
+    /* D6: recursive-SCAN per Gimpel 1973. P is in slot[3] at PATBCL+PATICL. */
+    /* after SCIN3: PATICL at slot[3]. P is in slot[4] = one DESCR further */
+    D(YPTR) = D(D_A(PATBCL) + D_A(PATICL) + DESCR);
     PUSH(MAXLEN);
-    PUSH(LENFCL);
-    PUSH(PDLPTR);
-    PUSH(PDLHED);
-    PUSH(NAMICL);
-    PUSH(NHEDCL);
+    PUSH(PATBCL);
+    PUSH(PATICL);
+    PUSH(XCL);
+    PUSH(YCL);
+    /* outer state saved on C frame — RSTSTK cannot touch it */
+    SAVSTK();
+    switch (SCIN(NORET)) {
+    case 1:
+	goto L_FNCBX;
+    case 3:
+	BRANCH(RTNUL3)
+    }
+    /* success: inner P matched */
+    POP(YCL);
+    POP(XCL);
+    POP(PATICL);
+    POP(PATBCL);
+    POP(MAXLEN);
+    D_A(PDLPTR) += 3*DESCR;                    /* make room for FNCD seal */
     if (D_A(PDLPTR) > D_A(PDLEND))
 	BRANCH(INTR31)
-    D_A(PDLPTR) += 3*DESCR;
-    D(D_A(PDLPTR) + DESCR) = D(FNCBCL);
+    D(D_A(PDLPTR) + DESCR) = D(FNCDCL);        /* outer seal — blocks backtrack into P */
     D_A(TMVAL) = S_L(TXSP);
     D_F(TMVAL) = D_V(TMVAL) = 0;
     D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
     D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
-    D(PDLHED) = D(PDLPTR);
-    D(NHEDCL) = D(NAMICL);
     goto L_SCOK;
     /*_*/
-L_FNCB:
-    POP(NHEDCL);
-    POP(NAMICL);
-    POP(PDLHED);
-    POP(PDLPTR);
-    POP(LENFCL);
+L_FNCBX:
+    /* D6: inner SCIN failed — restore outer state and propagate */
+    POP(YCL);
+    POP(XCL);
+    POP(PATICL);
+    POP(PATBCL);
     POP(MAXLEN);
     BRANCH(FAIL)
     /*_*/
+L_FNCB:
+    /* D6: dead stub — dispatch index 38, should never be reached */
+    BRANCH(FAIL)
+    /*_*/
 L_FNCC:
-    D(PDLPTR) = D(PDLHED);
-    D(NAMICL) = D(NHEDCL);
-    POP(NHEDCL);
-    POP(NAMICL);
-    POP(PDLHED);
-    POP(PDLPTR);
-    POP(LENFCL);
-    POP(MAXLEN);
-    if (D_PTR(PDLPTR) < D_PTR(PDLHED))
-	BRANCH(INTR13)
-    /* SN-26-bridge-coverage-i: SIL says equal also pushes seal (DOCMP3 G,E,L) */
-L_FNCC1:
-    D_A(PDLPTR) += 3*DESCR;
-    if (D_A(PDLPTR) > D_A(PDLEND))
-	BRANCH(INTR31)
-    D(D_A(PDLPTR) + DESCR) = D(FNCDCL);
-    D_A(TMVAL) = S_L(TXSP);
-    D_F(TMVAL) = D_V(TMVAL) = 0;
-    D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
-    D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
-    goto L_SCOK;
+    /* D6: dead stub — dispatch index 39, should never be reached */
+    BRANCH(FAIL)
+    /*_*/
+L_FNCC1: /* D6: unreachable — kept to avoid dangling goto */
+    BRANCH(FAIL)
     /*_*/
 L_FNCD:
+    /* D6: seal trap — unchanged. Kill all of P's alternatives and fail outward. */
     D(PDLPTR) = D(PDLHED);
     D(NAMICL) = D(NHEDCL);
     BRANCH(FAIL)
@@ -5371,28 +5374,30 @@ FNCP(ret_t retval) {
     BLOCK(TPTR);
     MAKNOD(XPTR,TPTR,TMVAL,ZEROCL,CHRCL,XPTR);
 L_FNCPP:
-    D_A(XSIZ) = D_V(D_A(XPTR));
-    D_F(XSIZ) = D_V(XSIZ) = 0;
-    D_A(TSIZ) = D_V(D_A(FNCAPT));
-    D_F(TSIZ) = D_V(TSIZ) = 0;
-    D_A(ZSIZ) = D_V(D_A(FNCCPT));
-    D_F(ZSIZ) = D_V(ZSIZ) = 0;
-    D_A(TSIZ) += D_A(XSIZ);
-    D_A(TSIZ) += D_A(ZSIZ);
+    /* D6: single-node FENCE(P) — 4 descriptors. Write directly (CPYPAT corrupts zero then-or). */
+    D_A(TSIZ) = 5*DESCR;
+    D_F(TSIZ) = 0;
     D_V(TSIZ) = P;
     SAVSTK();
     PUSH(TSIZ);
     BLOCK(TPTR);
     D(ZPTR) = D(TPTR);
-    D_A(TSIZ) = D_V(D_A(FNCAPT));
-    D_F(TSIZ) = D_V(TSIZ) = 0;
-    CPYPAT(TPTR,FNCAPT,ZEROCL,ZEROCL,TSIZ,TSIZ);
-    D_A(YSIZ) = D_V(D_A(FNCCPT));
-    D_F(YSIZ) = D_V(YSIZ) = 0;
-    D(ZSIZ) = D(TSIZ);
-    D_A(ZSIZ) += D_A(XSIZ);
-    CPYPAT(TPTR,XPTR,ZEROCL,TSIZ,ZSIZ,XSIZ);
-    CPYPAT(TPTR,FNCCPT,ZEROCL,ZSIZ,ZEROCL,YSIZ);
+    {   /* write 5-descriptor FENCEPT node directly */
+        /* slot[3] must have D_A=0 for SCIN3 length check — P goes in slot[4] */
+        int_t base = D_A(ZPTR);
+        /* slot[0]: title — self-ptr, TTL+MARK, 5*DESCR */
+        D_A(base)           = base;
+        D_F(base)           = TTL+MARK;
+        D_V(base)           = 5*DESCR;
+        /* slot[1]: fn — FNCAFN (dispatch index 37), FNC flag, v=2 */
+        D(base + DESCR)     = D(FNCAFN);
+        /* slot[2]: then-or = 0 (no PDL failure trap) */
+        D_A(base + 2*DESCR) = 0;  D_F(base + 2*DESCR) = 0;  D_V(base + 2*DESCR) = 0;
+        /* slot[3]: length = 0 (SCIN3 length check: 0 never exceeds MAXLEN) */
+        D_A(base + 3*DESCR) = 0;  D_F(base + 3*DESCR) = 0;  D_V(base + 3*DESCR) = 0;
+        /* slot[4]: P descriptor (inner pattern — FNCA reads via PATBCL+PATICL+DESCR) */
+        D(base + 4*DESCR)   = D(XPTR);
+    }
     BRANCH(RTZPTR)
     /*_*/
 }

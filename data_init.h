@@ -2006,12 +2006,14 @@
     D_A(res.fncept+1) = (int_t) (FNCEFN);
     D_F(res.fncept+1) = FNC;
     D_V(res.fncept+1) = (int_t) (2);
+    /* D6: FNCAPT is now 4 descriptors (hdr + fn + then-or=0 + P-ref slot) */
     D_A(res.fncapt) = (int_t) (FNCAPT);
     D_F(res.fncapt) = TTL+MARK;
-    D_V(res.fncapt) = (int_t) (3*DESCR);
+    D_V(res.fncapt) = (int_t) (4*DESCR);
     D_A(res.fncapt+1) = (int_t) (FNCAFN);
     D_F(res.fncapt+1) = FNC;
     D_V(res.fncapt+1) = (int_t) (2);
+    /* slots [2] and [3] stay zero from zero-init; slot[3] filled by FNCP builder */
     D_A(res.fnccpt) = (int_t) (FNCCPT);
     D_F(res.fnccpt) = TTL+MARK;
     D_V(res.fnccpt) = (int_t) (3*DESCR);
