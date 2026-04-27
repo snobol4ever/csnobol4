@@ -12256,12 +12256,7 @@ L_FNCE:
     goto L_SCOK;
     /*_*/
 L_FNCA:
-    PUSH(MAXLEN);
-    PUSH(LENFCL);
-    PUSH(PDLPTR);
-    PUSH(PDLHED);
-    PUSH(NAMICL);
-    PUSH(NHEDCL);
+    fnc_save_push(0);
     if (D_A(PDLPTR) > D_A(PDLEND))
 	BRANCH(INTR31)
     D_A(PDLPTR) += 3*DESCR;
@@ -12275,26 +12270,18 @@ L_FNCA:
     goto L_SCOK;
     /*_*/
 L_FNCB:
-    POP(NHEDCL);
-    POP(NAMICL);
-    POP(PDLHED);
-    POP(PDLPTR);
-    POP(LENFCL);
-    POP(MAXLEN);
+    fnc_save_pop(0);
     BRANCH(FAIL)
     /*_*/
 L_FNCC:
     D(PDLPTR) = D(PDLHED);
-    D(NAMICL) = D(NHEDCL);
-    POP(NHEDCL);
-    POP(NAMICL);
-    POP(PDLHED);
-    POP(PDLPTR);
-    POP(LENFCL);
-    POP(MAXLEN);
+    D(LENFCL) = D(D_A(PDLPTR) + 3*DESCR);
+    fnc_save_pop(0);
+    D_A(PDLPTR) -= 3*DESCR;
     if (D_PTR(PDLPTR) < D_PTR(PDLHED))
 	BRANCH(INTR13)
-    /* SN-26-bridge-coverage-i: SIL says equal also pushes seal (DOCMP3 G,E,L) */
+    else
+	goto L_FNCC1;
 L_FNCC1:
     D_A(PDLPTR) += 3*DESCR;
     if (D_A(PDLPTR) > D_A(PDLEND))

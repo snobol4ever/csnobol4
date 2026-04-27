@@ -123,3 +123,62 @@ cpypat(struct descr *d1, struct descr *d2, struct descr *d3,
 
     D_A(d1) = r1;
 }
+
+/*--------------------------------------------------------------------------
+ * SN-26-bridge-coverage-i: FENCE(P) outer-state save/restore via C helper.
+ *
+ * Replaces the cstack PUSH/POP idiom in SIL FNCA/FNCB/FNCC.  The cstack
+ * approach was unsafe for nested FENCEs: FNCA/FNCB/FNCC live as labels
+ * inside SCIN1 separated by tail-call BRANCH chains, and intermediate
+ * RSTSTK rewinds expose FNCA's saved cstack slots to overwrite by
+ * unrelated subsequent pushes.
+ *
+ * Audit (session #40): of the 6 values FNCA was saving
+ * (MAXLEN, LENFCL, PDLPTR, PDLHED, NAMICL, NHEDCL), only PDLHED and
+ * NAMICL genuinely need cross-RCALL persistence:
+ *   - MAXLEN is reloaded by SCNR from XSP at every scanner entry.
+ *   - LENFCL is already restored by SALT1 before FNCB dispatch
+ *     (FNCC restores it explicitly via GETDC from trap-entry slot 3).
+ *   - PDLPTR_outer is recoverable from FNCA-time PDLHED via DECRA.
+ *   - NHEDCL_outer == NAMICL_outer at FNCA-time (FNCA does
+ *     MOVD NHEDCL,NAMICL), so saving NAMICL covers both.
+ *
+ * Stack grows via realloc; never freed (lifetime = process).
+ *------------------------------------------------------------------------*/
+
+#include <stdlib.h>		/* malloc, realloc, abort */
+#include "equ.h"		/* CARDSZ, DSTSZ, OBSIZ etc. used by res.h */
+#include "res.h"		/* struct res */
+#include "data.h"		/* extern struct res res */
+
+struct fnc_save_frame {
+    struct descr pdlhed;
+    struct descr namicl;
+};
+
+STATIC_PAT struct fnc_save_frame *fnc_save_stack = NULL;
+STATIC_PAT size_t fnc_save_depth = 0;
+STATIC_PAT size_t fnc_save_capacity = 0;
+
+STATIC_PAT void fnc_save_push(int unused) {
+    (void)unused;
+    if (fnc_save_depth >= fnc_save_capacity) {
+	size_t new_cap = fnc_save_capacity ? fnc_save_capacity * 2 : 64;
+	struct fnc_save_frame *p = realloc(fnc_save_stack,
+					   new_cap * sizeof(struct fnc_save_frame));
+	if (!p) abort();
+	fnc_save_stack = p;
+	fnc_save_capacity = new_cap;
+    }
+    fnc_save_stack[fnc_save_depth].pdlhed = res.pdlhed[0];
+    fnc_save_stack[fnc_save_depth].namicl = res.namicl[0];
+    fnc_save_depth++;
+}
+
+STATIC_PAT void fnc_save_pop(int unused) {
+    (void)unused;
+    if (fnc_save_depth == 0) abort();
+    fnc_save_depth--;
+    res.pdlhed[0] = fnc_save_stack[fnc_save_depth].pdlhed;
+    res.namicl[0] = fnc_save_stack[fnc_save_depth].namicl;
+}
