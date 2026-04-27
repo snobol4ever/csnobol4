@@ -42,6 +42,7 @@
 #define MWK_CALL        2u
 #define MWK_RETURN      3u
 #define MWK_END         4u
+#define MWK_LABEL       5u
 
 #define MWT_NULL        0
 #define MWT_STRING      1
@@ -427,6 +428,33 @@ int monitor_emit_call(void *name_d_void) {
     if (name_id == MW_NAME_ID_NONE) return 1;
 
     emit_record_raw(MWK_CALL, name_id, MWT_NULL, NULL, 0);
+    return 1;
+}
+
+/* monitor_emit_label(stno_descr) — LABEL event.
+ *
+ * Fired from v311.sil INIT proc on every statement entry, after STNO has
+ * been advanced.  stno_descr is the STNOCL descriptor (an INTEGER).  The
+ * wire record carries name_id = MW_NAME_ID_NONE, type = MWT_INTEGER, and
+ * 8 bytes of LE stno value.  Controllers see stmt-counter alignment
+ * across all three runtimes without needing label-table reverse lookups.
+ *
+ * One LABEL record per source statement, regardless of fall-through vs
+ * GOTO entry. */
+int monitor_emit_label(void *stno_d_void) {
+    if (!monitor_init()) return 1;
+    const struct mir_descr *sd = (const struct mir_descr *)stno_d_void;
+    if (!sd) return 1;
+
+    /* STNOCL is held as a CSN INTEGER descriptor.  d->v is CSN_T_INTEGER (=6)
+     * and d->a.i carries the value.  Defensive: accept any descriptor and
+     * extract its integer slot — patterns like MOVD won't change the
+     * integer encoding. */
+    int_t stno = sd->a.i;
+    unsigned char buf[8];
+    for (int k = 0; k < 8; k++) buf[k] = (unsigned char)(((uint64_t)stno >> (k*8)) & 0xff);
+
+    emit_record_raw(MWK_LABEL, MW_NAME_ID_NONE, MWT_INTEGER, buf, 8);
     return 1;
 }
 

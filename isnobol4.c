@@ -4248,6 +4248,7 @@ INIT(ret_t retval) {
     D_A(OCICL) += DESCR;
     D(XCL) = D(D_A(OCBSCL) + D_A(OCICL));
     D_A(STNOCL) = D_A(XCL);
+    monitor_emit_label(STNOCL);   /* SN-26-bridge-coverage-f */
     D_A(FRTNCL) = D_V(XCL);
     D_F(FRTNCL) = D_V(FRTNCL) = 0;
     D_A(OCICL) += DESCR;

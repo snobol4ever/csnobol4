@@ -2626,6 +2626,7 @@ INIT   PROC    ,		   Statement initialization procedure
        INCRA   OCICL,DESCR	   Increment offset
        GETD    XCL,OCBSCL,OCICL	   Get statement data
        MOVA    STNOCL,XCL	   Update &STNO
+       XCALLC  monitor_emit_label,(STNOCL)   SN-26-bridge-coverage-f
        SETAV   FRTNCL,XCL	   Set up failure offset
        INCRA   OCICL,DESCR	   Increment offset		[PLB38]
        GETD    LNNOCL,OCBSCL,OCICL Update &LINE			[PLB38]
