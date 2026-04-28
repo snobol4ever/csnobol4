@@ -115,6 +115,13 @@ cpypat(struct descr *d1, struct descr *d2, struct descr *d3,
 	if (v7 == 3) {
 	    D(r1 + 4*DESCR) = D(r2 + 4*DESCR);
 	}
+	if (v7 == 4) {
+	    /* F-2 Step 3a: self-contained 5-descriptor node (FENCE(P)). Unlike
+	       v=3 (where slot[4] overlaps with next node's title), v=4 means
+	       slot[4] is the last slot of this self-contained node. Copy slot[4]
+	       AND advance 5*DESCR so the next iter starts at the next node. */
+	    D(r1 + 4*DESCR) = D(r2 + 4*DESCR);
+	}
 
 	r1 += (v7+1)*DESCR;
 	r2 += (v7+1)*DESCR;
