@@ -5086,15 +5086,26 @@ L_FNCE:
     goto L_SCOK;
     /*_*/
 L_FNCA:
-    /* D6: recursive-SCAN per Gimpel 1973. P is in slot[3] at PATBCL+PATICL. */
-    /* after SCIN3: PATICL at slot[3]. P is in slot[4] = one DESCR further */
+    /* D6: recursive-SCAN per Gimpel 1973. P is in slot[4] of FENCEPT node.      */
+    /* after SCIN3: PATICL = 3*DESCR (slot[3]). P is at PATBCL + 4*DESCR.        */
     D(YPTR) = D(D_A(PATBCL) + D_A(PATICL) + DESCR);
+    /* Push SCFLCL PDL sentinel so inner scan failure stops here (mirrors STARP6). */
+    D_A(PDLPTR) += 3*DESCR;
+    if (D_A(PDLPTR) > D_A(PDLEND))
+	BRANCH(INTR31)
+    D(D_A(PDLPTR) + DESCR) = D(SCFLCL);
+    D_A(TMVAL) = S_L(TXSP);
+    D_F(TMVAL) = D_V(TMVAL) = 0;
+    D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+    D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
+    /* Anchor inner scan's PDLHED at sentinel so FNCD seal sees clean base. */
+    D(PDLHED) = D(PDLPTR);
+    /* Save outer state on cstack — restored via RSTSTK after SCIN returns. */
     PUSH(MAXLEN);
     PUSH(PATBCL);
     PUSH(PATICL);
     PUSH(XCL);
     PUSH(YCL);
-    /* outer state saved on C frame — RSTSTK cannot touch it */
     SAVSTK();
     switch (SCIN(NORET)) {
     case 1:
@@ -5102,16 +5113,17 @@ L_FNCA:
     case 3:
 	BRANCH(RTNUL3)
     }
-    /* success: inner P matched */
+    /* success: inner P matched — restore outer cstack state. */
     POP(YCL);
     POP(XCL);
     POP(PATICL);
     POP(PATBCL);
     POP(MAXLEN);
-    D_A(PDLPTR) += 3*DESCR;                    /* make room for FNCD seal */
+    /* SCFLCL sentinel still on PDL; push FNCD seal above it. */
+    D_A(PDLPTR) += 3*DESCR;
     if (D_A(PDLPTR) > D_A(PDLEND))
 	BRANCH(INTR31)
-    D(D_A(PDLPTR) + DESCR) = D(FNCDCL);        /* outer seal — blocks backtrack into P */
+    D(D_A(PDLPTR) + DESCR) = D(FNCDCL);        /* seal — blocks backtrack into P */
     D_A(TMVAL) = S_L(TXSP);
     D_F(TMVAL) = D_V(TMVAL) = 0;
     D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
@@ -5119,7 +5131,7 @@ L_FNCA:
     goto L_SCOK;
     /*_*/
 L_FNCBX:
-    /* D6: inner SCIN failed — restore outer state and propagate */
+    /* D6: inner SCIN failed — restore outer cstack state and propagate. */
     POP(YCL);
     POP(XCL);
     POP(PATICL);
@@ -5382,22 +5394,20 @@ L_FNCPP:
     PUSH(TSIZ);
     BLOCK(TPTR);
     D(ZPTR) = D(TPTR);
-    {   /* write 5-descriptor FENCEPT node directly */
-        /* slot[3] must have D_A=0 for SCIN3 length check — P goes in slot[4] */
-        int_t base = D_A(ZPTR);
-        /* slot[0]: title — self-ptr, TTL+MARK, 5*DESCR */
-        D_A(base)           = base;
-        D_F(base)           = TTL+MARK;
-        D_V(base)           = 5*DESCR;
-        /* slot[1]: fn — FNCAFN (dispatch index 37), FNC flag, v=2 */
-        D(base + DESCR)     = D(FNCAFN);
-        /* slot[2]: then-or = 0 (no PDL failure trap) */
-        D_A(base + 2*DESCR) = 0;  D_F(base + 2*DESCR) = 0;  D_V(base + 2*DESCR) = 0;
-        /* slot[3]: length = 0 (SCIN3 length check: 0 never exceeds MAXLEN) */
-        D_A(base + 3*DESCR) = 0;  D_F(base + 3*DESCR) = 0;  D_V(base + 3*DESCR) = 0;
-        /* slot[4]: P descriptor (inner pattern — FNCA reads via PATBCL+PATICL+DESCR) */
-        D(base + 4*DESCR)   = D(XPTR);
-    }
+    /* write 5-descriptor FENCEPT node directly (CPYPAT corrupts zero then-or) */
+    /* slot[3] must have D_A=0 for SCIN3 length check — P goes in slot[4] */
+    /* ZERBLK already zeroed the block; slots[2] and [3] are zero by construction */
+    /* slot[0]: title — self-ptr, TTL+MARK, 5*DESCR */
+    D_A(D_A(ZPTR))                       = D_A(ZPTR);
+    D_F(D_A(ZPTR))                       = TTL+MARK;
+    D_V(D_A(ZPTR))                       = 5*DESCR;
+    /* slot[1]: fn — pointer to FNCAFN descriptor, FNC flag, v=3 (5-descriptor node, mirrors STARFN) */
+    D_A(D_A(ZPTR) + DESCR)              = (int_t)(FNCAFN);
+    D_F(D_A(ZPTR) + DESCR)              = FNC;
+    D_V(D_A(ZPTR) + DESCR)              = 3;
+    /* slots [2],[3] already zero from ZERBLK — slot[3].D_A=0 satisfies SCIN3 length check */
+    /* slot[4]: P descriptor (inner pattern — FNCA reads via PATBCL+PATICL+DESCR) */
+    D(D_A(ZPTR) + 4*DESCR)              = D(XPTR);
     BRANCH(RTZPTR)
     /*_*/
 }

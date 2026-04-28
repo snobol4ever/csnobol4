@@ -1518,7 +1518,7 @@
     D_A(res.fncffn) = (int_t) (XRTNL3);
     D_V(res.fncffn) = (int_t) (2);
     D_A(res.fncafn) = (int_t) (XFNCA);
-    D_V(res.fncafn) = (int_t) (2);
+    D_V(res.fncafn) = (int_t) (3);  /* D6: v=3 → 5-descriptor FENCEPT node (mirrors STARFN) */
     D_A(res.fncbfn) = (int_t) (XFNCB);
     D_V(res.fncbfn) = (int_t) (2);
     D_A(res.fncfn) = (int_t) (XFNCC);
@@ -2012,7 +2012,7 @@
     D_V(res.fncapt) = (int_t) (4*DESCR);
     D_A(res.fncapt+1) = (int_t) (FNCAFN);
     D_F(res.fncapt+1) = FNC;
-    D_V(res.fncapt+1) = (int_t) (2);
+    D_V(res.fncapt+1) = (int_t) (3);  /* D6: v=3 → 5-descriptor node (mirrors STARFN) */
     /* slots [2] and [3] stay zero from zero-init; slot[3] filled by FNCP builder */
     D_A(res.fnccpt) = (int_t) (FNCCPT);
     D_F(res.fnccpt) = TTL+MARK;
