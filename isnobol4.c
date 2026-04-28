@@ -12301,13 +12301,16 @@ L_FNCA:
     goto L_SCOK;
     /*_*/
 L_FNCBX:
-    /* D6: inner SCIN failed — restore outer cstack state and propagate. */
+    /* D6: inner SCIN failed — restore outer cstack state and propagate via the
+       failure walker.  Inner SCIN's walker already popped the SCFLCL sentinel
+       from PDL when it dispatched XFAIL, so the outer trap entry pushed by
+       SCIN3-around-FNCA is now at the top of PDL and can be consumed by SALT. */
     POP(YCL);
     POP(XCL);
     POP(PATICL);
     POP(PATBCL);
     POP(MAXLEN);
-    BRANCH(FAIL)
+    goto L_TSALT;
     /*_*/
 L_FNCB:
     /* D6: dead stub — dispatch index 38, should never be reached */
