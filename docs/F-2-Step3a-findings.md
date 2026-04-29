@@ -188,3 +188,164 @@ this needs careful analysis of which slots could be revisited.
    FNCDCL trap region, write zeros to any abandoned slots that the
    failure walker could revisit later.
 
+
+---
+
+## Session #50 update — PATBCL context-mismatch diagnosis
+
+Session #50 re-verified session #49's seal slot[2] fix (PDLPTR-3*DESCR
+PTR descriptor): same result — `min_crash.sno` clean, fence_function/
+10/10, beauty SEGV at stmt 1074. Then went deeper on WHY beauty still
+crashes after the seal fix.
+
+### gdb diagnosis (debug build with `OPT="-O0 -g3"` to defeat constprop)
+
+At the SEGV in beauty (stmt 1074, line 11456 `D(PTBRCL) = D(D_A(ZCL))`
+in L_SCIN4 fall-through):
+
+- `PATICL = {a.i=0xc0=192, f=0, v=64}` ← came from a slot[1] read by
+  an earlier SALT2.  `f=0` (no FNC) → SALT2 falls to L_SCIN3, which
+  bumps PATICL by 3*DESCR to 192 then dispatches `D(PATBCL+PATICL)`.
+- `PATBCL = {a.ptr=0x...c40, f=16, v=3}` — current outer pattern.
+- `ZCL = {a.i=1}` — garbage (PATBCL+0xa0 = unaligned read inside
+  pattern memory).
+- The SCIN1 stack is 8 frames deep (recursive SCIN through inner-P
+  matching).
+
+### The smoking gun
+
+Two C-level traps were inserted (reverted before commit, see RULES.md
+"Diagnostic patches are diagnostic — never commit them"):
+1. After SCIN3's slot[1] write (line 11445), trap if `XCL == {0x90,0,64}`.
+2. After SALT2's slot[1] read (line 11470), trap if `XCL == {0x90,0,64}`.
+
+In the SAME run on beauty:
+```
+SCIN3 wrote bad slot[1] at 0x..b710 PATBCL.a=0x..eeeca90 PATICL=48 PDLPTR=0x..b700
+BAD_SALT2 slot[1]@0x..b710={0x90,0,64} PDLPTR=0x..b700 PATBCL.a=0x..ef5dc40 PATBCL.f=16 PATBCL.v=3
+```
+
+**The SCIN3 push wrote slot[1]=`{0x90,0,64}` under PATBCL=0x..eeeca90
+(an inner sub-pattern, dispatched via STAR/`*var`).  Later, the failure
+walker reaches that same slot under PATBCL=0x..ef5dc40 (the OUTER
+pattern).** SCIN3 fall-through dispatches `OUTER_PATBCL + 0x90` →
+garbage memory → segfault.
+
+A then-or value of `0x90 = 144 = 9*DESCR` is a perfectly valid offset
+inside the inner pattern (0x..eeeca90).  It is meaningless (and lethal)
+inside the outer pattern.
+
+### Why session #49's seal fix doesn't reach this
+
+Session #49's fix correctly rewinds PDLPTR to `entry-PDLPTR` of the
+innermost FENCA when its seal fires.  But after the seal fires, the
+failure walker continues walking BACKWARD through PDL slots that were
+pushed during inner-P matching of an OUTER FENCA — slots that legally
+belong to a sub-pattern context with a different PATBCL.  The seal
+discards only its OWN region; orphaned traps from earlier inner-P
+matchings remain in PDL and are read by the outer walker with wrong
+PATBCL.
+
+### Why this is FENCE-specific (verified)
+
+Same expression-grammar nesting WITHOUT FENCE produces no crash on
+csnobol4 (`/tmp/no_fence.sno` from session #50 — rendered impotent
+because all FENCE() removed and replaced with bare alternation).  It
+appears that FENCE's seal-fire path is the unique trigger for the
+walker to traverse PDL positions across pattern-context boundaries.
+
+### SPITBOL solves this via `pmhbs` discipline (`x64/sbl.min:11978-12039`)
+
+Read the SPITBOL p_fnc + p_fnd more carefully than session #41-49 did:
+
+```
+p_fnc:  mov  xt,pmhbs           ; get inner stack base ptr
+        mov  pmhbs,num01(xt)    ; restore outer stack base
+        beq  xt,xs,pfnc1        ; OPTIMIZE if no alternatives left
+        mov  -(xs),xt           ; else stack inner stack base
+        mov  -(xs),=ndfnd       ; stack ptr to ndfnd (seal)
+        brn  succp
+
+p_fnd:  mov  xs,wb              ; pop stack to fence() history base
+        brn  flpop              ; pop base entry and fail
+```
+
+Critical points missed in earlier sessions:
+1. **SPITBOL has an optimization**: if inner P leaves no alternatives
+   on `xs`, NO seal is placed at all (`pfnc1` just pops p_fnb and
+   succeeds).  CSNOBOL4 unconditionally places the seal — possibly a
+   missed optimization but not the bug.
+2. **SPITBOL's p_fnd rewinds xs to `wb`** which is loaded from the
+   seal entry's first slot (the "inner stack base ptr" stacked at
+   line 12030).  That's `xt = pmhbs` at p_fnc time = `xs` at p_fna
+   time = the position xs was at when FENCE was ENTERED.
+3. **`flpop`** then does ONE MORE pop and fail.  This consumes the
+   trap entry that originally dispatched FENCA (in CSNOBOL4 terms,
+   the SCIN3-around-FENCEPT entry).
+
+So SPITBOL's seal-fire path:
+- Rewinds xs to FENCA's entry position (one trap region BELOW the
+  FENCEPT-dispatch entry).
+- Then pops one more entry (the FENCEPT-dispatch entry itself).
+- Then continues failure walk — at which point xs is BELOW everything
+  related to this FENCE, and the next slot read is from genuinely
+  outer context.
+
+### Proposed fix for session #51
+
+CSNOBOL4's seal slot[2] should target **`entry-PDLPTR - 3*DESCR`**
+instead of `entry-PDLPTR`:
+
+```c
+/* In L_FNCA success path, replacing the current slot[2] write: */
+D_A(TMVAL) = D_A(PDLPTR) - 6*DESCR;   /* = entry_PDLPTR - 3*DESCR */
+D_F(TMVAL) = D_V(TMVAL) = 0;
+D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+```
+
+(The `-6*DESCR` here is `-3*DESCR for SCFLCL discard, -3*DESCR for one
+more trap region below`.  Verify the arithmetic by walking through the
+PDLPTR transitions in L_FNCA.)
+
+When seal fires, L_FNCD sets PDLPTR to that value, which is one trap
+region BELOW the SCIN3-around-FENCEPT entry.  The walker's next SALT2
+reads the SCIN3-around-FENCEPT entry's slot[1] — which dispatches to
+FENCEPT (FNC flag) — but that's already been consumed... actually
+this needs careful trace verification.  May need explicit "skip past
+one more trap" logic in L_FNCD itself rather than just adjusting the
+rewind target.
+
+### Alternative fix (Plan B if rewind-deeper doesn't work)
+
+**Save outer PATBCL/PATICL on cstack at FNCA entry; restore on seal
+fire.** Extend FNCDCL trap to carry not just rewind-PDLPTR but also
+outer-PATBCL/outer-PATICL.  L_FNCD restores PATBCL/PATICL from those
+slots, ensuring subsequent SALT2's L_SCIN3 fall-through uses the
+correct pattern.
+
+Risk: PATBCL/PATICL would need extra trap slots (current trap is 3
+slots: dispatch-fn, cursor, lenfcl).  This conflicts with the strict
+3-slot SALT2 walk arithmetic.  Either add a side-table for FENCE
+seal extra-state, OR have L_FNCD walk back N slots to find a 6-slot
+extended seal entry written by FNCA.
+
+### Why this is NOT yet implemented (session #50 stopped here)
+
+Session #50 ran out of context window before testing either fix.  The
+diagnosis is firm; the fix is an investigative arithmetic exercise
+that needs a fresh session.  Session #50 reverted all instrumentation
+and the seal slot[2] fix back to baseline — working tree is clean,
+beauty still produces the 35-line "Parse Error" output unchanged.
+
+### Honest note on circularity
+
+Session #50 partially re-traversed session #49's ground.  The seal
+slot[2] = PDLPTR-3*DESCR fix WAS proposed in `docs/F-2-Step3a-findings.md`
+already; session #50 re-verified it (same outcome: min_crash clean,
+beauty regresses).  The genuine new contribution of session #50:
+the PATBCL context-mismatch diagnosis (which slot[1] gets read with
+wrong PATBCL) and the SPITBOL `flpop` + `pmhbs` analysis showing
+that the rewind needs to go ONE TRAP REGION DEEPER than the seal
+currently rewinds to.  Session #51 should test that arithmetic
+adjustment first before considering the side-table approach.
+
