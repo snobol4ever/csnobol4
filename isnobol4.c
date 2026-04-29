@@ -12317,9 +12317,12 @@ L_FNCA:
     if (D_A(PDLPTR) > D_A(PDLEND))
 	BRANCH(INTR31)
     D(D_A(PDLPTR) + DESCR) = D(FNCDCL);        /* seal — blocks backtrack into P */
-    D_A(TMVAL) = S_L(TXSP);
-    D_F(TMVAL) = D_V(TMVAL) = 0;
-    D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+    /* Byrd-box local memory: store outer pmhbs SNAPSHOT in slot[2] (cursor slot)
+       so L_FNCD can rewind to the right position when the seal fires later.
+       At this point PDLHED is OUTER (just restored from cstack via POP(PDLHED)
+       in the success path above), so D(PDLHED) is exactly the rewind target.
+       L_FNCD reads YCL (= slot[2]) post-SALT2 and uses it instead of global PDLHED. */
+    D(D_A(PDLPTR) + 2*DESCR) = D(PDLHED);
     D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
     goto L_SCOK;
     /*_*/
@@ -12354,8 +12357,14 @@ L_FNCC1: /* D6: unreachable — kept to avoid dangling goto */
     BRANCH(FAIL)
     /*_*/
 L_FNCD:
-    /* D6: seal trap — unchanged. Kill all of P's alternatives and fail outward. */
-    D(PDLPTR) = D(PDLHED);
+    /* D6 + Byrd-box local memory: seal trap fired (failure walker tried to
+       backtrack into P after FENCE matched). Rewind PDL to the OUTER pmhbs
+       snapshot stored in slot[2] of this trap entry at FNCDCL-push time.
+       SALT2 has already loaded slot[2] into YCL, so YCL is our snapshot.
+       This avoids relying on the global PDLHED which may have been overwritten
+       by other primitives between FENCE-success and seal-fire. NAMICL is reset
+       from NHEDCL (still globally correct: outer NAMICL state). */
+    D(PDLPTR) = D(YCL);
     D(NAMICL) = D(NHEDCL);
     BRANCH(FAIL)
     /*_*/

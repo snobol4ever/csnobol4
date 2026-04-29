@@ -5139,9 +5139,10 @@ L_FNCA:
     if (D_A(PDLPTR) > D_A(PDLEND))
 	BRANCH(INTR31)
     D(D_A(PDLPTR) + DESCR) = D(FNCDCL);        /* seal — blocks backtrack into P */
-    D_A(TMVAL) = S_L(TXSP);
-    D_F(TMVAL) = D_V(TMVAL) = 0;
-    D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+    /* Byrd-box local memory: outer pmhbs snapshot in slot[2] for L_FNCD rewind.
+       PDLHED is OUTER here (restored above via POP(PDLHED)). L_FNCD reads it
+       via SALT2's YCL load, so the seal doesn't depend on global PDLHED. */
+    D(D_A(PDLPTR) + 2*DESCR) = D(PDLHED);
     D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
     goto L_SCOK;
     /*_*/
@@ -5173,8 +5174,9 @@ L_FNCC1: /* D6: unreachable — kept to avoid dangling goto */
     BRANCH(FAIL)
     /*_*/
 L_FNCD:
-    /* D6: seal trap — unchanged. Kill all of P's alternatives and fail outward. */
-    D(PDLPTR) = D(PDLHED);
+    /* D6 + Byrd-box local memory: rewind PDL to outer pmhbs snapshot stored
+       in slot[2] at FNCDCL-push time. SALT2 already loaded it into YCL. */
+    D(PDLPTR) = D(YCL);
     D(NAMICL) = D(NHEDCL);
     BRANCH(FAIL)
     /*_*/
