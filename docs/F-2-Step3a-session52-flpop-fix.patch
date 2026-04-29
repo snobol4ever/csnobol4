@@ -1,0 +1,54 @@
+diff --git a/isnobol4.c b/isnobol4.c
+index 72030c0..cdc6a58 100644
+--- a/isnobol4.c
++++ b/isnobol4.c
+@@ -12317,12 +12317,16 @@ L_FNCA:
+     if (D_A(PDLPTR) > D_A(PDLEND))
+ 	BRANCH(INTR31)
+     D(D_A(PDLPTR) + DESCR) = D(FNCDCL);        /* seal — blocks backtrack into P */
+-    /* Byrd-box local memory: store outer pmhbs SNAPSHOT in slot[2] (cursor slot)
+-       so L_FNCD can rewind to the right position when the seal fires later.
+-       At this point PDLHED is OUTER (just restored from cstack via POP(PDLHED)
+-       in the success path above), so D(PDLHED) is exactly the rewind target.
+-       L_FNCD reads YCL (= slot[2]) post-SALT2 and uses it instead of global PDLHED. */
+-    D(D_A(PDLPTR) + 2*DESCR) = D(PDLHED);
++    /* Store the "inner base" (= entry-PDLPTR = PDLPTR at SCFLCL push time) in slot[2].
++       This mirrors SPITBOL p_fnc which stacks xt=pmhbs (inner stack base) in the seal.
++       At seal-push time PDLPTR just had += 3*DESCR; entry-PDLPTR = PDLPTR - 3*DESCR.
++       L_FNCD (= p_fnd) restores PDLPTR to inner base, then pops 3*DESCR more (flpop
++       = consume the SCFLCL trap), leaving PDLPTR at old_PDLPTR (top of the
++       SCIN3-around-FENCEPT entry), which the outer failure walker then reads and
++       dispatches correctly.  L_FNCD reads YCL (= slot[2]) post-SALT2. */
++    D_A(TMVAL) = D_A(PDLPTR) - 3*DESCR;   /* inner base = entry-PDLPTR */
++    D_F(TMVAL) = D_V(TMVAL) = 0;
++    D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+     D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
+     goto L_SCOK;
+     /*_*/
+@@ -12357,14 +12361,18 @@ L_FNCC1: /* D6: unreachable — kept to avoid dangling goto */
+     BRANCH(FAIL)
+     /*_*/
+ L_FNCD:
+-    /* D6 + Byrd-box local memory: seal trap fired (failure walker tried to
+-       backtrack into P after FENCE matched). Rewind PDL to the OUTER pmhbs
+-       snapshot stored in slot[2] of this trap entry at FNCDCL-push time.
+-       SALT2 has already loaded slot[2] into YCL, so YCL is our snapshot.
+-       This avoids relying on the global PDLHED which may have been overwritten
+-       by other primitives between FENCE-success and seal-fire. NAMICL is reset
+-       from NHEDCL (still globally correct: outer NAMICL state). */
+-    D(PDLPTR) = D(YCL);
++    /* D6 + SPITBOL p_fnd analog: seal trap fired (failure walker tried to
++       backtrack into P after FENCE matched).
++       SALT2 has loaded slot[2] = inner base (entry-PDLPTR at SCFLCL push)
++       into YCL.  Restore PDLPTR to inner base, then do flpop: subtract
++       3*DESCR to consume the SCFLCL trap entry, leaving PDLPTR at the
++       top of the SCIN3-around-FENCEPT entry that originally dispatched
++       FNCA.  The outer failure walker's next SALT2 reads and consumes
++       that entry correctly with the current OUTER PATBCL.  This mirrors
++       SPITBOL's `mov xs,wb; brn flpop` (sbl.min:12044-12046).
++       NAMICL is reset from NHEDCL (globally correct outer state). */
++    D(PDLPTR) = D(YCL);            /* xs = inner base (SPITBOL p_fnd step 1) */
++    D_A(PDLPTR) -= 3*DESCR;        /* flpop: consume SCFLCL trap entry */
+     D(NAMICL) = D(NHEDCL);
+     BRANCH(FAIL)
+     /*_*/
