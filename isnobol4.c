@@ -12280,6 +12280,15 @@ L_FNCA:
     PUSH(XCL);
     PUSH(YCL);
     PUSH(PDLPTR);
+    PUSH(PDLHED);
+    PUSH(NAMICL);
+    PUSH(NHEDCL);
+    /* Set inner pmhbs/name-list-head — mirrors original pre-D6 FNCA shape and
+       ATP/BAL idiom. Inner P's pattern primitives that read PDLHED/NHEDCL (BAL,
+       nested FENCE) see the inner snapshot. RESTORED on both success and failure
+       below so outer state is preserved. */
+    D(PDLHED) = D(PDLPTR);
+    D(NHEDCL) = D(NAMICL);
     SAVSTK();
     switch (SCIN(NORET)) {
     case 1:
@@ -12288,6 +12297,9 @@ L_FNCA:
 	BRANCH(RTNUL3)
     }
     /* success: inner P matched — restore outer cstack state. */
+    POP(NHEDCL);
+    POP(NAMICL);
+    POP(PDLHED);
     POP(PDLPTR);   /* rewind PDL past SCFLCL and any inner leaks */
     /* PDLPTR is now back to its pre-SCFLCL value, BUT we kept the SCFLCL trap
        slot itself (PDLPTR += 3*DESCR was done before the push). Actually no —
@@ -12315,7 +12327,12 @@ L_FNCBX:
     /* F-2 Step 3a: inner SCIN failed — rewind PDL past leaks AND SCFLCL,
        restore outer cstack state, propagate via the failure walker.
        The outer trap entry pushed by SCIN3-around-FNCA is now exposed at
-       top of PDL and gets consumed by SALT. */
+       top of PDL and gets consumed by SALT.
+       Also restores outer PDLHED/NAMICL/NHEDCL — set to inner-snapshot at
+       FNCA entry, must be popped here too (mirrors success path). */
+    POP(NHEDCL);
+    POP(NAMICL);
+    POP(PDLHED);
     POP(PDLPTR);
     D_A(PDLPTR) -= 3*DESCR;   /* discard SCFLCL trap slot */
     POP(YCL);

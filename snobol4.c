@@ -5109,6 +5109,13 @@ L_FNCA:
     PUSH(XCL);
     PUSH(YCL);
     PUSH(PDLPTR);
+    PUSH(PDLHED);
+    PUSH(NAMICL);
+    PUSH(NHEDCL);
+    /* Set inner pmhbs/name-list-head — mirrors original pre-D6 FNCA shape and
+       ATP/BAL idiom. RESTORED on both success and failure below. */
+    D(PDLHED) = D(PDLPTR);
+    D(NHEDCL) = D(NAMICL);
     SAVSTK();
     switch (SCIN(NORET)) {
     case 1:
@@ -5117,6 +5124,9 @@ L_FNCA:
 	BRANCH(RTNUL3)
     }
     /* success: inner P matched — rewind PDL, restore outer cstack state. */
+    POP(NHEDCL);
+    POP(NAMICL);
+    POP(PDLHED);
     POP(PDLPTR);
     D_A(PDLPTR) -= 3*DESCR;   /* discard SCFLCL trap slot */
     POP(YCL);
@@ -5137,7 +5147,11 @@ L_FNCA:
     /*_*/
 L_FNCBX:
     /* F-2 Step 3a: inner SCIN failed — rewind PDL past leaks AND SCFLCL,
-       restore outer cstack state, propagate via failure walker. */
+       restore outer cstack state, propagate via failure walker.
+       Restores PDLHED/NAMICL/NHEDCL set to inner-snapshot at FNCA entry. */
+    POP(NHEDCL);
+    POP(NAMICL);
+    POP(PDLHED);
     POP(PDLPTR);
     D_A(PDLPTR) -= 3*DESCR;   /* discard SCFLCL trap slot */
     POP(YCL);
