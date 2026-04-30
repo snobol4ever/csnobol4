@@ -1,0 +1,145 @@
+--- isnobol4.c.orig	2026-04-30 18:39:47.339573736 +0000
++++ isnobol4.c	2026-04-30 19:09:36.495655809 +0000
+@@ -27,6 +27,46 @@
+         strexc_inited = 1; \
+     } } while (0)
+ 
++/*--- PATBCL-write logger (session #57 diagnostic, env-gated) -------------*/
++#include <stdio.h>
++#include <stdlib.h>
++#include <stdint.h>
++static int patbcl_log_enabled = -1;
++#define PATBCL_LOG(site) \
++    do { \
++        if (patbcl_log_enabled < 0) \
++            patbcl_log_enabled = (getenv("PATBCL_LOG") != NULL) ? 1 : 0; \
++        if (patbcl_log_enabled) \
++            fprintf(stderr, "PATBCL-WRITE @%s: PATBCL %p -> %p (PDLPTR=%p)\n", \
++                    site, \
++                    (void*)(uintptr_t)D_A(PATBCL), \
++                    (void*)(uintptr_t)D_A(YPTR), \
++                    (void*)(uintptr_t)D_A(PDLPTR)); \
++    } while (0)
++#define PATBCL_LOG_VAL(site, val) \
++    do { \
++        if (patbcl_log_enabled < 0) \
++            patbcl_log_enabled = (getenv("PATBCL_LOG") != NULL) ? 1 : 0; \
++        if (patbcl_log_enabled) \
++            fprintf(stderr, "PATBCL-WRITE @%s: PATBCL %p -> %p (PDLPTR=%p)\n", \
++                    site, \
++                    (void*)(uintptr_t)D_A(PATBCL), \
++                    (void*)(uintptr_t)D_A(val), \
++                    (void*)(uintptr_t)D_A(PDLPTR)); \
++    } while (0)
++#define PATBCL_POP_LOG(site) \
++    do { \
++        if (patbcl_log_enabled < 0) \
++            patbcl_log_enabled = (getenv("PATBCL_LOG") != NULL) ? 1 : 0; \
++        if (patbcl_log_enabled) { \
++            fprintf(stderr, "PATBCL-POP   @%s: PATBCL %p -> %p (PDLPTR=%p)\n", \
++                    site, \
++                    (void*)(uintptr_t)D_A(PATBCL), \
++                    (void*)(uintptr_t)D_A(cstack), \
++                    (void*)(uintptr_t)D_A(PDLPTR)); \
++        } \
++    } while (0)
++
+ static int
+ ENDALL(ret_t retval) {
+     ENTRY(ENDALL)
+@@ -7751,6 +7791,7 @@
+     POP(XCL);
+     POP(WPTR);
+     POP(PATICL);
++    PATBCL_POP_LOG("EXPV7");
+     POP(PATBCL);
+     POP(OCICL);
+     POP(OCBSCL);
+@@ -11449,6 +11490,7 @@
+ SCIN1(ret_t retval) {
+     ENTRY(SCIN1)
+ L_SCIN1A:
++    PATBCL_LOG("SCIN1A");
+     D(PATBCL) = D(YPTR);
+     if (D_A(UNSCCL) != 0)
+ 	goto L_UNSC;
+@@ -11490,6 +11532,15 @@
+ L_SALT1:
+     D(LENFCL) = D(D_A(PDLPTR) + 3*DESCR);
+ L_SALT2:
++    if (patbcl_log_enabled > 0) { \
++        struct descr *_slot1 = (struct descr *)(D_A(PDLPTR) + DESCR); \
++        fprintf(stderr, "SALT2-READ:   PDLPTR=%p PATBCL=%p slot[1]={a=%p,f=%d,v=%d} %s\n", \
++                (void*)(uintptr_t)D_A(PDLPTR), \
++                (void*)(uintptr_t)D_A(PATBCL), \
++                (void*)(uintptr_t)_slot1->a.i, \
++                (int)_slot1->f, (int)_slot1->v, \
++                (_slot1->f & FNC) ? "[FNC dispatch]" : "[SCIN3 fallthrough]"); \
++    }
+     D(XCL) = D(D_A(PDLPTR) + DESCR);
+     D(YCL) = D(D_A(PDLPTR) + 2*DESCR);
+     D_A(PDLPTR) -= 3*DESCR;
+@@ -11589,6 +11640,7 @@
+     /*_*/
+ L_UNSC:
+     D_A(UNSCCL) = 0;
++    PATBCL_LOG("UNSC");
+     D(PATBCL) = D(YPTR);
+ L_SALT3:
+     if (D_A(LENFCL) != 0)
+@@ -12066,6 +12118,7 @@
+     POP(XCL);
+     POP(WPTR);
+     POP(PATICL);
++    PATBCL_POP_LOG("ATP2");
+     POP(PATBCL);
+     goto L_SCOK;
+     /*_*/
+@@ -12217,6 +12270,7 @@
+     POP(YCL);
+     POP(XCL);
+     POP(PATICL);
++    PATBCL_POP_LOG("STARP2");
+     POP(PATBCL);
+     POP(MAXLEN);
+     /* session #56: STREXCCL sentinel install (conditional, mirrors p_nth pnth1) */
+@@ -12236,6 +12290,7 @@
+     POP(YCL);
+     POP(XCL);
+     POP(PATICL);
++    PATBCL_POP_LOG("STARP5");
+     POP(PATBCL);
+     POP(MAXLEN);
+ L_STARP3:
+@@ -12356,6 +12411,7 @@
+     POP(YCL);
+     POP(XCL);
+     POP(PATICL);
++    PATBCL_POP_LOG("FNCA");
+     POP(PATBCL);
+     POP(MAXLEN);
+     /* Push FNCD seal at clean PDL position. */
+@@ -12391,6 +12447,7 @@
+     POP(YCL);
+     POP(XCL);
+     POP(PATICL);
++    PATBCL_POP_LOG("FNCBX");
+     POP(PATBCL);
+     POP(MAXLEN);
+     goto L_TSALT;
+@@ -12427,6 +12484,7 @@
+        inner-PATBCL into YCL.  Restore PATBCL to inner so leaked then-or
+        traps below this sentinel dispatch under the correct PATBCL.
+        Mirrors SPITBOL p_nth's =ndexc handler (sbl.min:12213). */
++    PATBCL_LOG_VAL("STREXC", YCL);
+     D(PATBCL) = D(YCL);
+     goto L_SALT3;
+     /*_*/
+@@ -12574,6 +12632,7 @@
+     POP(XCL);
+     POP(WPTR);
+     POP(PATICL);
++    PATBCL_POP_LOG("ENMI4");
+     POP(PATBCL);
+ L_ENMI2:
+     D_A(PDLPTR) += 3*DESCR;
