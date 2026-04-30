@@ -1,0 +1,154 @@
+diff --git a/isnobol4.c b/isnobol4.c
+index 72030c0..4ebb646 100644
+--- a/isnobol4.c
++++ b/isnobol4.c
+@@ -4,6 +4,29 @@
+ 
+ # include "mlink.h"
+ # include "parms.h"
++
++/*======================================================================
++ * STREXCCL — STAR/DSAR exit-context PATBCL-restore sentinel (session #56)
++ * SPITBOL p_nth =ndexc analog (sbl.min:12213).  See
++ * docs/F-2-Step3a-session56-findings.md for design notes.
++ *======================================================================*/
++#define XSTREX (41)
++static struct descr STREXFN_d[1];
++static struct descr STREXCCL_d[1];
++#define STREXFN  ((ptr_t)STREXFN_d)
++#define STREXCCL ((ptr_t)STREXCCL_d)
++static struct descr STREX_innerpat_d[1];
++static struct descr STREX_entrypdl_d[1];
++#define STREX_innerpat ((ptr_t)STREX_innerpat_d)
++#define STREX_entrypdl ((ptr_t)STREX_entrypdl_d)
++static int strexc_inited = 0;
++#define STREXC_INIT() \
++    do { if (!strexc_inited) { \
++        D_A(STREXFN) = (int_t)XSTREX;  D_F(STREXFN) = 0;   D_V(STREXFN) = (int_t)2; \
++        D_A(STREXCCL) = (int_t)STREXFN; D_F(STREXCCL) = FNC; D_V(STREXCCL) = (int_t)2; \
++        strexc_inited = 1; \
++    } } while (0)
++
+ static int
+ ENDALL(ret_t retval) {
+     ENTRY(ENDALL)
+@@ -11559,6 +11582,8 @@ L_PATBRA:
+ 	goto L_FNCC;
+     case 40:
+ 	goto L_FNCD;
++    case 41:
++	goto L_STREXC;
+     }
+     BRANCH(INTR13)
+     /*_*/
+@@ -12174,6 +12199,10 @@ L_STARP6:
+     PUSH(PATICL);
+     PUSH(XCL);
+     PUSH(YCL);
++    /* session #56: save entry-PDLPTR snapshot + inner-PATBCL (=YPTR) */
++    STREXC_INIT();
++    PUSH(PDLPTR);
++    PUSH(YPTR);
+     D(MAXLEN) = D(NVAL);
+     SAVSTK();
+     switch (SCIN(NORET)) {
+@@ -12183,14 +12212,27 @@ L_STARP6:
+ 	BRANCH(RTNUL3)
+     }
+ L_STARP2:
++    POP(STREX_innerpat);     /* session #56 */
++    POP(STREX_entrypdl);     /* session #56 */
+     POP(YCL);
+     POP(XCL);
+     POP(PATICL);
+     POP(PATBCL);
+     POP(MAXLEN);
++    /* session #56: STREXCCL sentinel install (conditional, mirrors p_nth pnth1) */
++    if (D_A(PDLPTR) > D_A(STREX_entrypdl)) {
++	D_A(PDLPTR) += 3*DESCR;
++	if (D_A(PDLPTR) > D_A(PDLEND))
++	    BRANCH(INTR31)
++	D(D_A(PDLPTR) + DESCR) = D(STREXCCL);
++	D(D_A(PDLPTR) + 2*DESCR) = D(STREX_innerpat);
++	D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
++    }
+     goto L_SCOK;
+     /*_*/
+ L_STARP5:
++    POP(STREX_innerpat);     /* session #56: discard */
++    POP(STREX_entrypdl);     /* session #56: discard */
+     POP(YCL);
+     POP(XCL);
+     POP(PATICL);
+@@ -12231,6 +12273,10 @@ L_DSARP2:
+     PUSH(PATICL);
+     PUSH(XCL);
+     PUSH(YCL);
++    /* session #56: save entry-PDLPTR + inner-PATBCL (=YPTR via L_UNSC) */
++    STREXC_INIT();
++    PUSH(PDLPTR);
++    PUSH(YPTR);
+     D(MAXLEN) = D(NVAL);
+     D_A(UNSCCL) = 1;
+     SAVSTK();
+@@ -12317,12 +12363,16 @@ L_FNCA:
+     if (D_A(PDLPTR) > D_A(PDLEND))
+ 	BRANCH(INTR31)
+     D(D_A(PDLPTR) + DESCR) = D(FNCDCL);        /* seal — blocks backtrack into P */
+-    /* Byrd-box local memory: store outer pmhbs SNAPSHOT in slot[2] (cursor slot)
+-       so L_FNCD can rewind to the right position when the seal fires later.
+-       At this point PDLHED is OUTER (just restored from cstack via POP(PDLHED)
+-       in the success path above), so D(PDLHED) is exactly the rewind target.
+-       L_FNCD reads YCL (= slot[2]) post-SALT2 and uses it instead of global PDLHED. */
+-    D(D_A(PDLPTR) + 2*DESCR) = D(PDLHED);
++    /* Store the "inner base" (= entry-PDLPTR = PDLPTR at SCFLCL push time) in slot[2].
++       This mirrors SPITBOL p_fnc which stacks xt=pmhbs (inner stack base) in the seal.
++       At seal-push time PDLPTR just had += 3*DESCR; entry-PDLPTR = PDLPTR - 3*DESCR.
++       L_FNCD (= p_fnd) restores PDLPTR to inner base, then pops 3*DESCR more (flpop
++       = consume the SCFLCL trap), leaving PDLPTR at old_PDLPTR (top of the
++       SCIN3-around-FENCEPT entry), which the outer failure walker then reads and
++       dispatches correctly.  L_FNCD reads YCL (= slot[2]) post-SALT2. */
++    D_A(TMVAL) = D_A(PDLPTR) - 3*DESCR;   /* inner base = entry-PDLPTR */
++    D_F(TMVAL) = D_V(TMVAL) = 0;
++    D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+     D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
+     goto L_SCOK;
+     /*_*/
+@@ -12357,17 +12407,29 @@ L_FNCC1: /* D6: unreachable — kept to avoid dangling goto */
+     BRANCH(FAIL)
+     /*_*/
+ L_FNCD:
+-    /* D6 + Byrd-box local memory: seal trap fired (failure walker tried to
+-       backtrack into P after FENCE matched). Rewind PDL to the OUTER pmhbs
+-       snapshot stored in slot[2] of this trap entry at FNCDCL-push time.
+-       SALT2 has already loaded slot[2] into YCL, so YCL is our snapshot.
+-       This avoids relying on the global PDLHED which may have been overwritten
+-       by other primitives between FENCE-success and seal-fire. NAMICL is reset
+-       from NHEDCL (still globally correct: outer NAMICL state). */
+-    D(PDLPTR) = D(YCL);
++    /* D6 + SPITBOL p_fnd analog: seal trap fired (failure walker tried to
++       backtrack into P after FENCE matched).
++       SALT2 has loaded slot[2] = inner base (entry-PDLPTR at SCFLCL push)
++       into YCL.  Restore PDLPTR to inner base, then do flpop: subtract
++       3*DESCR to consume the SCFLCL trap entry, leaving PDLPTR at the
++       top of the SCIN3-around-FENCEPT entry that originally dispatched
++       FNCA.  The outer failure walker's next SALT2 reads and consumes
++       that entry correctly with the current OUTER PATBCL.  This mirrors
++       SPITBOL's `mov xs,wb; brn flpop` (sbl.min:12044-12046).
++       NAMICL is reset from NHEDCL (globally correct outer state). */
++    D(PDLPTR) = D(YCL);            /* xs = inner base (SPITBOL p_fnd step 1) */
++    D_A(PDLPTR) -= 3*DESCR;        /* flpop: consume SCFLCL trap entry */
+     D(NAMICL) = D(NHEDCL);
+     BRANCH(FAIL)
+     /*_*/
++L_STREXC:
++    /* STREXCCL sentinel — session #56.  SALT2 has loaded slot[2] =
++       inner-PATBCL into YCL.  Restore PATBCL to inner so leaked then-or
++       traps below this sentinel dispatch under the correct PATBCL.
++       Mirrors SPITBOL p_nth's =ndexc handler (sbl.min:12213). */
++    D(PATBCL) = D(YCL);
++    goto L_SALT3;
++    /*_*/
+ L_NME:
+     D_A(PDLPTR) += 3*DESCR;
+     if (D_A(PDLPTR) > D_A(PDLEND))
