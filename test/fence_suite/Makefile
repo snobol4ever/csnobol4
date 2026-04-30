@@ -1,5 +1,5 @@
-# FENCE 32-test suite — extends fence_function/ with broader coverage.
-# Tests live in corpus/crosscheck/patterns/100..131.
+# FENCE 48-test suite — extends fence_function/ with broader coverage.
+# Tests live in corpus/crosscheck/patterns/100..147.
 
 SNOBOL4  ?= ../../snobol4
 SPITBOL  ?= /home/claude/x64/bin/sbl
@@ -47,7 +47,28 @@ TIER_E = 128_pat_recursive_grammar_right_rec \
          130_pat_two_star_fence_concat_outer \
          131_pat_boolean_expr_grammar
 
-TESTS = $(TIER_A) $(TIER_B) $(TIER_C) $(TIER_D) $(TIER_E)
+# Tier F: depth-recursion stress (session #55) — added to demarcate the
+# 119/129/130 bug class from generic-recursion bugs. ALL 16 pass on csnobol4
+# baseline at HEAD 6d08540. They constitute a regression-prevention floor:
+# any fix to the FENCE leak class must keep these green.
+TIER_F = 132_pat_fence_eps_recur_shallow \
+         133_pat_fence_eps_recur_deep \
+         134_pat_fence_eps_recur_stress \
+         135_pat_balanced_parens_shallow \
+         136_pat_balanced_parens_deep \
+         137_pat_balanced_mixed \
+         138_pat_calc_paren_expr \
+         139_pat_calc_paren_deep \
+         140_pat_eval_double_fn_trick \
+         141_pat_eval_double_fn_arbno \
+         142_pat_arbno_fence_arbno \
+         143_pat_regex_quantified_class \
+         144_pat_json_nested_array \
+         145_pat_left_assoc_via_arbno_fence \
+         146_pat_fence_alt_with_capture \
+         147_pat_fence_through_unevaluated
+
+TESTS = $(TIER_A) $(TIER_B) $(TIER_C) $(TIER_D) $(TIER_E) $(TIER_F)
 
 .PHONY: all csnobol4 spitbol clean
 
@@ -69,13 +90,13 @@ csnobol4:
 	        echo "    actual:   $$actual"; \
 	    fi; \
 	done; \
-	echo "--- $$pass OK, $$fail FAIL, $$crash CRASH (of 32) ---"
+	echo "--- $$pass OK, $$fail FAIL, $$crash CRASH (of 48) ---"
 
 spitbol:
 	@echo "=== FENCE 32-test suite — SPITBOL oracle ==="
 	@pass=0; fail=0; \
 	for t in $(TESTS); do \
-	    actual=$$(timeout 5 $(SPITBOL) $(CORPUS)/$$t.sno 2>&1); \
+	    actual=$$(timeout 5 $(SPITBOL) -bf $(CORPUS)/$$t.sno 2>&1); \
 	    expected=$$(cat $(CORPUS)/$$t.ref); \
 	    if [ "$$actual" = "$$expected" ]; then \
 	        echo "  OK    $$t"; pass=$$((pass+1)); \
@@ -85,6 +106,6 @@ spitbol:
 	        echo "    actual:   $$actual"; \
 	    fi; \
 	done; \
-	echo "--- $$pass OK, $$fail FAIL (of 32) ---"
+	echo "--- $$pass OK, $$fail FAIL (of 48) ---"
 
 clean:

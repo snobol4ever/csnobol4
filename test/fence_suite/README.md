@@ -22,6 +22,7 @@ cd csnobol4/test/fence_suite && make spitbol    # against SPITBOL oracle
 | C | 116–119 | ARBNO + FENCE combinations |
 | D | 120–127 | Real grammars: calculator (3), regex (2), JSON (3) |
 | E | 128–131 | Beauty-class deeply-nested grammars |
+| F | 132–147 | **Depth-recursion stress (session #55)** — answers "does FENCE corrupt state under deep recursion?" |
 
 ## csnobol4 baseline (HEAD `80454aa`, session #50 end)
 
@@ -97,6 +98,77 @@ Any fix attempt should run those first.
 The `.ref` files were authored to match **SPITBOL's correct semantics**
 (SNOBOL4-doc-conforming behavior). When run against `make spitbol`, all 32
 should PASS. If any don't, the .ref needs correction — not a SPITBOL bug.
+
+The fence_function/ suite is also reference-quality. This new suite
+extends coverage; together they form the FENCE contract csnobol4 must meet.
+
+## Tier F (session #55): the empirical bug-class boundary
+
+Tier F adds 16 depth-recursion stress tests. **All 16 PASS on csnobol4
+baseline at HEAD `6d08540`.** This is a useful negative result — it
+constrains what the existing 119/129/130 bug class actually IS:
+
+The bugs causing tests 119/129/130 to crash/fail are **NOT**:
+
+- Depth recursion alone (134 = depth 100, 136 = parens depth 40, both pass)
+- Mutual recursion via `*var` (135-137 all pass)
+- Calculator-style nesting with `*var` (138, 139 pass)
+- The double-function trick `EVAL("pat . *f()")` (140, 141 pass)
+- ARBNO containing inline FENCE (142 passes)
+- Regex with FENCE-locked alternation (143 passes)
+- Nested array grammars with FENCE (144 passes)
+- Left-fold via ARBNO+FENCE (145 passes)
+- Capture into FENCE alts (146 passes)
+- FENCE through `*var` inside concat (147 passes)
+
+The bugs **specifically require** all three of:
+
+1. `*var` indirection of a FENCE-containing pattern, **AND**
+2. Being matched under an outer ARBNO/iteration, **AND**
+3. A tail-anchor failure that triggers the failure walker to traverse
+   leaked traps from an iteration past the seal.
+
+That is the precise signature of test 119/129. The Tier F results
+demarcate this bug class from the broader "FENCE under recursion"
+space — the runtime handles deep recursion, mutual recursion, and
+double-function dispatch correctly. The leak class is narrow and
+specific, which validates session #54's STREXCCL design (a sentinel
+that reroutes PATBCL specifically when STARP6/DSARP2 succeed with
+inner-pushed entries) as the targeted fix.
+
+Tier F also provides a **regression-prevention floor**: any fix to
+the FENCE leak class must keep all 16 Tier F tests green. The 5-line
+guard `cmd=(LEN(1)|LEN(2)); outer=(*cmd 'X'); s='ABX'` from session
+#54 is one element of this floor; Tier F is the broader version.
+
+### Tier F details
+
+| ID | Name | What it stresses |
+|----|------|-------------------|
+| 132 | `pat_fence_eps_recur_shallow` | Canonical Gimpel `FENCE(*P\|eps)`, depth 3 |
+| 133 | `pat_fence_eps_recur_deep` | Same, depth 30 |
+| 134 | `pat_fence_eps_recur_stress` | Same, depth 100 |
+| 135 | `pat_balanced_parens_shallow` | Balanced parens via FENCE, depth 3 |
+| 136 | `pat_balanced_parens_deep` | Same, depth 40 |
+| 137 | `pat_balanced_mixed` | `([{<>}])` heterogeneous brackets |
+| 138 | `pat_calc_paren_expr` | `((1+2)*3)` calculator with parens |
+| 139 | `pat_calc_paren_deep` | `(((((1)))))` all-parens depth 5 |
+| 140 | `pat_eval_double_fn_trick` | Beauty Shift/Reduce idiom isolated |
+| 141 | `pat_eval_double_fn_arbno` | Double-fn trick under ARBNO loop |
+| 142 | `pat_arbno_fence_arbno` | ARBNO of `LEN(1) FENCE(LEN(1)\|eps)` |
+| 143 | `pat_regex_quantified_class` | `ARBNO(*LP)` where `LP=FENCE(...)` |
+| 144 | `pat_json_nested_array` | Nested-choice with backtrack across FENCEs |
+| 145 | `pat_left_assoc_via_arbno_fence` | `num ARBNO(FENCE('+') num)` left-fold |
+| 146 | `pat_fence_alt_with_capture` | FENCE longest-match with `.` capture |
+| 147 | `pat_fence_through_unevaluated` | Minimal FENCE-in-`*var`-in-concat |
+
+## When SPITBOL output is available
+
+The `.ref` files were authored to match **SPITBOL's correct semantics**
+(SNOBOL4-doc-conforming behavior). When run against `make spitbol`, all 48
+should PASS — except test 127, whose `.ref` is incorrect (documented in
+goal-file session #52 findings; correction is pending). Currently:
+**SPITBOL: 47/48 PASS · csnobol4: 40/48 PASS** (HEAD `6d08540`).
 
 The fence_function/ suite is also reference-quality. This new suite
 extends coverage; together they form the FENCE contract csnobol4 must meet.
