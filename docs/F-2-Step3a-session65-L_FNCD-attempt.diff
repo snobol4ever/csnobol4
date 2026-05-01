@@ -1,0 +1,13 @@
+diff --git a/isnobol4.c b/isnobol4.c
+index a66fc14..e02099a 100644
+--- a/isnobol4.c
++++ b/isnobol4.c
+@@ -12434,7 +12434,7 @@ L_FNCD:
+     D(PDLPTR) = D(YCL);            /* restore to inner base */
+     D_A(PDLPTR) -= 3*DESCR;        /* flpop: consume SCFLCL trap */
+     D(NAMICL) = D(NHEDCL);
+-    BRANCH(FAIL)
++    goto L_TSALT;                  /* SPITBOL p_fnd: brn flpop -> failp dispatches next alt; BRANCH(FAIL) was wrong */
+     /*_*/
+ L_STREXC:
+     /* STREXCCL sentinel — session #56/#58.  SALT2 loaded slot[2]=PATBCL into YCL.
