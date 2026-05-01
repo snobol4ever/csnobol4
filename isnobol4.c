@@ -11495,9 +11495,14 @@ L_SALT2:
     D(PATICL) = D(XCL);
     if (D_A(PATICL) == 0)
 	goto L_SALT3;
-    S_L(TXSP) = D_A(YCL);
-    if (!(D_F(PATICL) & FNC))
+    /* session #64: only restore scan cursor (TXSP) from slot[2] for non-FNC
+     * traps.  For FNC traps (STREXCCL, FNCDCL, etc.), slot[2] holds handler-
+     * specific data (e.g. a PATBCL heap pointer), NOT a cursor offset.
+     * Writing it into TXSP corrupts the cursor, causing spurious matches. */
+    if (!(D_F(PATICL) & FNC)) {
+	S_L(TXSP) = D_A(YCL);
 	goto L_SCIN3;
+    }
     D(PTBRCL) = D(D_A(PATICL));
 L_PATBRA:
     switch (D_A(PTBRCL)) {
