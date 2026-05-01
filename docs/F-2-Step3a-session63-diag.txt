@@ -1,0 +1,39 @@
+# Diagnostic patch for session #63 — RPSII + SALT2 trace
+# Usage: apply edits manually, set RPOS_TRACE=1 WALK_TRACE=1, run
+# repro.  Reverted before commit per RULES.md.
+
+# Edit 1: at L_RPSII (line ~11873):
+L_RPSII:
+    if (getenv("RPOS_TRACE")) {
+        fprintf(stderr, "RPSII: XPTR=%ld TXSP=%ld XSP_len=%ld MAXLEN=%ld\n",
+            (long)D_A(XPTR), (long)S_L(TXSP), (long)S_L(XSP), (long)D_A(MAXLEN));
+    }
+    if (D_A(XPTR) < 0)
+	goto L_SCLENR;
+    D_A(NVAL) = S_L(XSP);
+    D_F(NVAL) = D_V(NVAL) = 0;
+    D(TVAL) = D(NVAL);
+    D_A(TVAL) -= D_A(XPTR);
+    D_A(NVAL) = S_L(TXSP);
+    D_F(NVAL) = D_V(NVAL) = 0;
+    if (getenv("RPOS_TRACE")) {
+        fprintf(stderr, "RPSII: TVAL=%ld NVAL=%ld\n", (long)D_A(TVAL), (long)D_A(NVAL));
+    }
+    if (D_A(NVAL) < D_A(TVAL))
+	goto L_TSALF;
+    if (D_A(NVAL) == D_A(TVAL))
+	goto L_TSCOK;
+    goto L_TSALT;
+
+# Edit 2: at L_SALT2 (line ~11491):
+L_SALT2:
+    if (getenv("WALK_TRACE")) {
+        fprintf(stderr, "SALT2: PDLPTR=%lx slot1=%lx slot2=%lx slot3=%lx PATBCL=%lx TXSP=%ld\n",
+            (long)D_A(PDLPTR),
+            (long)D_A(D_A(PDLPTR) + DESCR),
+            (long)D_A(D_A(PDLPTR) + 2*DESCR),
+            (long)D_A(D_A(PDLPTR) + 3*DESCR),
+            (long)D_A(PATBCL),
+            (long)S_L(TXSP));
+    }
+    D(XCL) = D(D_A(PDLPTR) + DESCR);
