@@ -181,7 +181,86 @@ The STREXCCL sentinels and leaked entries are now ABOVE PDLPTR — the outer
 walker never sees them again on this failure path. The STREXCCL bottom at P0
 handles PATBCL restore for any subsequent retry that descends into that region.
 
-## Key files to read at session start
+## CRITICAL NEW FINDING (session #60 fix attempts)
+
+The deferred-seal approach (fnca_seal_pending flag) was implemented and traced.
+Finding: **FNCD never fires** even when the seal is installed. The outer failure
+walker dispatches the alternation trap before reaching the seal because a
+**SCIN3-FENCEPT trap** sits ABOVE the seal.
+
+### PDL layout (traced)
+
+The inner SCIN (DSAR's SCIN1) processes the FENCEPT node. SCIN3 pushes a
+continuation trap for FENCEPT at some position P_fencept (inside the inner
+SCIN's PDL, in the leaked region). This trap's slot[1] function = FNCAFN
+(dispatch to FNCA). When the outer failure walker hits this trap, it re-invokes
+FNCA, which matches `'ab'` on the second alternative → wrong match.
+
+The STREXCCL top sentinel is installed above the leaked region. The FNCDCL seal
+is installed above the top sentinel. But the SCIN3-FENCEPT trap is ALSO in the
+leaked region — between the top and bottom sentinels. STREXC only restores
+PATBCL; it does not prevent the SCIN3-FENCEPT trap from being dispatched.
+
+### The correct fix
+
+**At FNCA success, in the success path before `goto L_SCOK`:**
+Find the SCIN3 trap for FENCEPT in the inner PDL and overwrite it with FNCDCL.
+
+The SCIN3 trap for FENCEPT is at `PDLPTR_at_FNCA_dispatch` — which equals
+`PDLPTR` as seen at the point FNCA begins executing (before inner SCIN starts).
+FNCA saves this as `PDLHED` (it does `D(PDLHED) = D(PDLPTR)` at entry).
+At FNCA success: after `POP(PDLPTR)` restores to P1 (SCFLCL base) and
+`D_A(PDLPTR) -= 3*DESCR` gives P0, the SCIN3-FENCEPT trap is at `P0` (because
+SCIN3 pushed it, then FNCA was dispatched from there, and P0 = entry PDLPTR
+from before FNCA's inner SCIN).
+
+Actually: SCIN3 does `D_A(PDLPTR) += 3*DESCR` then pushes the trap. The trap
+is at the resulting PDLPTR. Then FNCA is dispatched. At FNCA entry, PDLPTR
+points to the SCIN3 trap for FENCEPT. FNCA then pushes SCFLCL: `PDLPTR += 3*DESCR`.
+So P1 (SCFLCL base) = P_fencept + 3*DESCR. At FNCA success, P0 = P1 - 3*DESCR
+= P_fencept. **The SCIN3-FENCEPT trap is at P0 = the position we discard SCFLCL
+to.** 
+
+Therefore: at FNCA success, after restoring PDLPTR to P0, overwrite
+`D(D_A(PDLPTR) + DESCR)` (= slot[1] of the SCIN3-FENCEPT trap) with `D(FNCDCL)`.
+Overwrite `D(D_A(PDLPTR) + 2*DESCR)` with `D_A(PDLPTR)` (seal-base for FNCD rewind).
+Keep `D(D_A(PDLPTR) + 3*DESCR)` as LENFCL. Do NOT push a new PDL entry — just
+rewrite the existing SCIN3 trap in place.
+
+This is the SPITBOL `p_fnc` approach exactly: replace the inner-scan trap with
+the seal in-place.
+
+```c
+/* FNCA success path — after POP(PDLPTR); D_A(PDLPTR) -= 3*DESCR: */
+/* P0 = entry PDLPTR = SCIN3-FENCEPT trap position */
+/* Overwrite SCIN3-FENCEPT trap with FNCDCL seal in-place */
+D(D_A(PDLPTR) + DESCR) = D(FNCDCL);        /* seal function */
+D_A(TMVAL) = D_A(PDLPTR);                  /* seal-base for FNCD rewind */
+D_F(TMVAL) = D_V(TMVAL) = 0;
+D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+/* slot[3] (LENFCL) stays as-is — already set by SCIN3 */
+goto L_SCOK;
+```
+
+No fnca_seal_pending flag needed. No STARP2 changes needed for the seal.
+STARP2 still installs STREXCCL sentinels (for PATBCL restore), but the seal
+is now at P0 — below the STREXCCL sentinels, but ABOVE any further leaked entries
+from subsequent outer scan. The outer walker hits FNCDCL first, FNCD fires,
+rewinds to P0 (seal-base = PDLPTR), flpops to `P0 - 3*DESCR`, BRANCH(FAIL)
+exits SCIN1. Done.
+
+### FNCD rewind after in-place seal
+
+YCL = seal-base = P0. After SALT2 decrement: PDLPTR = P0 - 3*DESCR.
+D(PDLPTR) = D(YCL) = P0. D_A(PDLPTR) -= 3*DESCR → P0 - 3*DESCR.
+BRANCH(FAIL) exits. Outer scan fails cleanly. ✓
+
+### Remove fnca_seal_pending machinery
+
+The flag approach is wrong — remove all fnca_seal_pending / fnca_seal_lenfcl
+globals and the STARP2 check block. Revert FNCA success to in-place overwrite.
+FNCBX stays as-is (no seal on fail path).
+
 
 1. `docs/F-2-Step3a-session60-findings.md` — this session's analysis
 2. `isnobol4.c` lines ~12187–12320 (STARP6, STARP2, STARP5, DSARP2, FNCA, FNCBX)
