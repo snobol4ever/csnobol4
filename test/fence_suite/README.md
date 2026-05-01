@@ -1,4 +1,8 @@
-# FENCE 32-test suite
+# FENCE 53-test suite
+
+**Updated session #65, 2026-05-01:** suite extended to 53 tests with Tier G
+(148-152) — a bug-class regression target plus negative discriminators
+verified against the SPITBOL oracle.  See "Tier G" section at end of file.
 
 A second FENCE regression suite, complementary to `test/fence_function/`.
 Where `fence_function/` covers 10 toy cases of inline FENCE, this suite covers
@@ -172,3 +176,67 @@ goal-file session #52 findings; correction is pending). Currently:
 
 The fence_function/ suite is also reference-quality. This new suite
 extends coverage; together they form the FENCE contract csnobol4 must meet.
+
+## Tier G (session #65, 2026-05-01): bug-class regression target + negative discriminators
+
+Tier G adds 5 tests (148-152) verified against the SPITBOL oracle.  Their
+purpose is to make the regression target **specific** rather than just larger.
+
+| ID  | Name                                       | Status  | Role |
+|-----|--------------------------------------------|---------|------|
+| 148 | `pat_arbno_star_var_fence_short`           | FAIL    | Bug-class POSITIVE — variant of 119 with shorter input string `'ab'` |
+| 149 | `pat_arbno_star_var_fence_outer_pre_match` | FAIL    | Bug-class POSITIVE — corrected version of structurally-degenerate test 118 |
+| 150 | `pat_star_var_fence_alts_no_arbno`         | OK      | NEGATIVE discriminator — same conjunction as 119 but explicit alternation iterator instead of ARBNO |
+| 151 | `pat_arbno_inline_fence_backtrack`         | OK      | NEGATIVE discriminator — ARBNO of *inline* FENCE with backtrack-needed input (not `*var`-dispatched) |
+| 152 | `pat_json_keyvalue_renamed`                | FAIL    | Bug-class POSITIVE — 127 with capture vars renamed to avoid case-fold collision |
+
+**Findings from the Tier G additions:**
+
+1. **Test 118 was structurally degenerate.** Its source assigns `outer` *after*
+   the match statement, so `*outer` dereferences an unassigned variable at
+   match time and the FENCE machinery never runs.  Both csnobol4 and SPITBOL
+   agree on the no-match outcome, but only because no one ran the seal-test
+   logic.  Test 149 is what 118 was meant to be.
+
+2. **Test 150 (no-ARBNO version) PASSES on csnobol4.**  This sharpens the
+   bug-class characterization: it requires *ARBNO specifically*, not just any
+   outer iteration.  The bug is in ARBNO's redo-trap mechanism interaction
+   with FENCE leaks.
+
+3. **Test 151 (inline-FENCE-no-`*var`) PASSES on csnobol4.**  This further
+   sharpens: the bug requires *`*var` indirection* of the FENCE pattern, not
+   inline FENCE.  Inline FENCE inside ARBNO with backtrack-required input is
+   handled correctly.
+
+4. **Test 152 exposes a cleaner case for bug 2.**  Test 127 used `S` as a
+   capture variable, which under SPITBOL's default case-folding collides with
+   the input variable `s` — this masked what 127 was measuring.  Renamed
+   capture vars (`SVAL`, `NVAL`, etc.) make the FENCE conditional-assign-not-
+   committed bug visible cleanly.
+
+5. **Tests 140 and 141 had label collisions** under SPITBOL's case-fold
+   default.  `shift`/`Shift` and `grab`/`Grab` collide when SPITBOL folds
+   case internally.  Renamed to `inner`/`outer` and `grab`/`catch` for
+   cross-dialect portability.
+
+6. **Test 127's `.ref` was generated under SPITBOL `-b` (case-fold ON);
+   the Makefile runs `-bf` (case-fold OFF).**  Updated `.ref` to match
+   `-bf` output (`k=age s= n=42 b=`).
+
+**Suite totals after Tier G additions:**
+
+| Implementation | Total | OK | FAIL | CRASH |
+|----------------|-------|----|------|-------|
+| SPITBOL (-bf)  | 53    | **53** | 0 | 0 |
+| csnobol4       | 53    | 46 | 7    | 0 |
+
+**The 7 csnobol4 FAILs** (119, 124, 127, 129, 148, 149, 152) form the
+**bug-class regression target**.  Any fix to the FENCE `*var`+ARBNO
+backtrack bug must:
+
+- Promote all 7 to OK
+- Keep tests 150 and 151 passing (negative discriminators)
+- Keep Tier F's 16 tests passing (depth-recursion floor)
+- Keep `fence_function/` 10/10 (toy regression suite)
+- Keep `guard5` (`cmd=(LEN(1)|LEN(2)); outer=(*cmd 'X'); s='ABX'`) producing
+  `inner backtrack worked` (inner-backtrack regression guard from session #54)

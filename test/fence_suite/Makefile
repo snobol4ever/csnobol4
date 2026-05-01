@@ -1,5 +1,15 @@
-# FENCE 48-test suite — extends fence_function/ with broader coverage.
-# Tests live in corpus/crosscheck/patterns/100..147.
+# FENCE 53-test suite — extends fence_function/ with broader coverage.
+# Tests live in corpus/crosscheck/patterns/100..151.
+#
+# Session #65 (2026-05-01): added Tier G (148-151) — verified against
+# SPITBOL oracle.  148-149 are bug-class-positive (currently FAIL on
+# csnobol4; must PASS after fix).  150-151 are NEGATIVE discriminators
+# (currently PASS; must REMAIN passing — they distinguish ARBNO-specific
+# bug from generic-iteration bug, and *var-specific bug from inline-FENCE
+# bug).  Together with 119/124/127/129 they form a 6-OK regression target.
+#
+# Tests 140 and 141 made portable (renamed labels for SPITBOL's case-fold).
+# Test 118 documented honestly (its "pass" is structurally degenerate).
 
 SNOBOL4  ?= ../../snobol4
 SPITBOL  ?= /home/claude/x64/bin/sbl
@@ -68,14 +78,25 @@ TIER_F = 132_pat_fence_eps_recur_shallow \
          146_pat_fence_alt_with_capture \
          147_pat_fence_through_unevaluated
 
-TESTS = $(TIER_A) $(TIER_B) $(TIER_C) $(TIER_D) $(TIER_E) $(TIER_F)
+# Tier G: bug-class regression target + negative discriminators (session #65).
+# 148-149 currently FAIL on csnobol4 (same bug class as 119/124/127/129);
+# must PASS after fix.  150-151 currently PASS; must REMAIN passing — they
+# distinguish "ARBNO-specific" from "any iteration" and "*var-required"
+# from "inline-FENCE" hypotheses.
+TIER_G = 148_pat_arbno_star_var_fence_short \
+         149_pat_arbno_star_var_fence_outer_pre_match \
+         150_pat_star_var_fence_alts_no_arbno \
+         151_pat_arbno_inline_fence_backtrack \
+         152_pat_json_keyvalue_renamed
+
+TESTS = $(TIER_A) $(TIER_B) $(TIER_C) $(TIER_D) $(TIER_E) $(TIER_F) $(TIER_G)
 
 .PHONY: all csnobol4 spitbol clean
 
 all: csnobol4
 
 csnobol4:
-	@echo "=== FENCE 32-test suite — CSNOBOL4 ==="
+	@echo "=== FENCE 53-test suite — CSNOBOL4 ==="
 	@pass=0; fail=0; crash=0; \
 	for t in $(TESTS); do \
 	    actual=$$(timeout 5 $(SNOBOL4) -bf $(CORPUS)/$$t.sno 2>&1); \
@@ -90,10 +111,10 @@ csnobol4:
 	        echo "    actual:   $$actual"; \
 	    fi; \
 	done; \
-	echo "--- $$pass OK, $$fail FAIL, $$crash CRASH (of 48) ---"
+	echo "--- $$pass OK, $$fail FAIL, $$crash CRASH (of 53) ---"
 
 spitbol:
-	@echo "=== FENCE 32-test suite — SPITBOL oracle ==="
+	@echo "=== FENCE 53-test suite — SPITBOL oracle ==="
 	@pass=0; fail=0; \
 	for t in $(TESTS); do \
 	    actual=$$(timeout 5 $(SPITBOL) -bf $(CORPUS)/$$t.sno 2>&1); \
@@ -106,6 +127,6 @@ spitbol:
 	        echo "    actual:   $$actual"; \
 	    fi; \
 	done; \
-	echo "--- $$pass OK, $$fail FAIL (of 48) ---"
+	echo "--- $$pass OK, $$fail FAIL (of 53) ---"
 
 clean:
