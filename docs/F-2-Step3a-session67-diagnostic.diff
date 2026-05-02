@@ -1,0 +1,96 @@
+diff --git a/isnobol4.c b/isnobol4.c
+index a66fc14..8cf16ae 100644
+--- a/isnobol4.c
++++ b/isnobol4.c
+@@ -12190,6 +12190,9 @@ L_STARP4:
+     if (D_A(TSIZ) > D_A(NVAL))
+ 	goto L_TSALT;
+ L_STARP6:
++    /* DBG */ if (getenv("A2_TRACE")) { static int sp6=0; sp6++; fprintf(stderr,
++	"STARP6 entry #%d: PATBCL=%lx YPTR=%lx PDLPTR=%lx (pre-push)\n",
++	sp6, (long)D_A(PATBCL), (long)D_A(YPTR), (long)D_A(PDLPTR));}
+     D_A(PDLPTR) += 3*DESCR;
+     if (D_A(PDLPTR) > D_A(PDLEND))
+ 	BRANCH(INTR31)
+@@ -12223,6 +12226,53 @@ L_STARP2:
+     POP(PATICL);
+     POP(PATBCL);
+     POP(MAXLEN);
++    /* session #67 option A2: zero non-FNC slot[1]s in the leak region IF any
++     * FNCDCL exists anywhere in the active PDL frame [PDLHED..PDLPTR].
++     * This catches FENCE-involved scopes even when the FNCDCL lives in an
++     * outer STARP2's region — the leaks need to be cleaned at every STARP2
++     * level once a FENCE has fired in the surrounding scan. */
++    if (D_A(PDLPTR) > D_A(STREX_entrypdl)) {
++	{
++	    ptr_t pslot1;
++	    ptr_t p;
++	    int fncdcl_found = 0;
++	    /* scan from PDLHED to PDLPTR for any FNCDCL */
++	    for (p = (ptr_t)D_A(PDLHED); p <= (ptr_t)D_A(PDLPTR); p += 3*DESCR) {
++		pslot1 = p + DESCR;
++		if ((D_F(pslot1) & FNC) && D_A((ptr_t)D_A(pslot1)) == XFNCD) {
++		    fncdcl_found = 1;
++		    break;
++		}
++	    }
++	    /* DBG */ if (getenv("A2_TRACE")) {
++		ptr_t dp;
++		fprintf(stderr, "A2 STARP2: PATBCL=%lx PDLHED=%lx STREX_entrypdl=%lx PDLPTR=%lx fncdcl_found=%d\n",
++			(long)D_A(PATBCL), (long)D_A(PDLHED),
++			(long)D_A(STREX_entrypdl), (long)D_A(PDLPTR), fncdcl_found);
++		for (dp = (ptr_t)D_A(STREX_entrypdl); dp <= (ptr_t)D_A(PDLPTR) + 6*DESCR; dp += 3*DESCR) {
++		    ptr_t s1 = dp + DESCR;
++		    fprintf(stderr, "  pdl[%lx]%s slot1={a=%lx f=%d v=%d}",
++			    (long)dp, dp <= (ptr_t)D_A(PDLPTR) ? " " : "*",
++			    (long)D_A(s1), (int)D_F(s1), (int)D_V(s1));
++		    if (D_F(s1) & FNC) fprintf(stderr, " case=%ld", (long)D_A((ptr_t)D_A(s1)));
++		    fprintf(stderr, "\n");
++		}
++	    }
++	    /* if FNCDCL present anywhere, zero non-FNC slot[1]s in the leak region */
++	    if (fncdcl_found) {
++		for (p = (ptr_t)D_A(STREX_entrypdl) + 3*DESCR;
++		     p <= (ptr_t)D_A(PDLPTR); p += 3*DESCR) {
++		    pslot1 = p + DESCR;
++		    if (!(D_F(pslot1) & FNC)) {
++			if (getenv("A2_TRACE")) fprintf(stderr, "  ZERO pdl[%lx]\n", (long)p);
++			D_A(pslot1) = 0;
++			D_F(pslot1) = 0;
++			D_V(pslot1) = 0;
++		    }
++		}
++	    }
++	}
++    }
+     /* session #58: paired bottom + top STREXCCL sentinels.
+      * At success-with-inner-leaks, install a routing pair so the failure
+      * walker descending later restores PATBCL correctly at BOTH ends of
+@@ -12281,6 +12331,9 @@ L_DSARP1:
+     D_A(NVAL) = D_V(YCL);
+     D_F(NVAL) = D_V(NVAL) = 0;
+ L_DSARP2:
++    /* DBG */ if (getenv("A2_TRACE")) { static int dp2=0; dp2++; fprintf(stderr,
++	"DSARP2 entry #%d: PATBCL=%lx YPTR=%lx PDLPTR=%lx (pre-push)\n",
++	dp2, (long)D_A(PATBCL), (long)D_A(YPTR), (long)D_A(PDLPTR));}
+     D_A(NVAL) = D_A(MAXLEN) - D_A(NVAL);
+     D_F(NVAL) = D_F(MAXLEN);
+     D_V(NVAL) = D_V(MAXLEN);
+@@ -12389,6 +12442,8 @@ L_FNCA:
+     if (D_A(PDLPTR) > D_A(PDLEND))
+ 	BRANCH(INTR31)
+     D(D_A(PDLPTR) + DESCR) = D(FNCDCL);        /* seal — blocks backtrack into P */
++    /* DBG */ if (getenv("A2_TRACE")) fprintf(stderr,
++	"FNCA-SUCCESS placed FNCDCL at PDLPTR=%lx\n", (long)D_A(PDLPTR));
+     /* Store seal-base (= PDLPTR = inner PDLHED = SCFLCL base) in slot[2].
+        FNCD: restores PDLPTR to seal-base, then flpops 3*DESCR to expose the
+        SCFLCL slot below, which the outer walker reads and discards cleanly.
+@@ -12434,7 +12489,7 @@ L_FNCD:
+     D(PDLPTR) = D(YCL);            /* restore to inner base */
+     D_A(PDLPTR) -= 3*DESCR;        /* flpop: consume SCFLCL trap */
+     D(NAMICL) = D(NHEDCL);
+-    BRANCH(FAIL)
++    goto L_TSALT;                  /* SPITBOL p_fnd: brn flpop -> failp dispatches next alt; BRANCH(FAIL) was wrong */
+     /*_*/
+ L_STREXC:
+     /* STREXCCL sentinel — session #56/#58.  SALT2 loaded slot[2]=PATBCL into YCL.
