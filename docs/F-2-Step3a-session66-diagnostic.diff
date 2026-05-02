@@ -1,0 +1,97 @@
+diff --git a/isnobol4.c b/isnobol4.c
+index a66fc14..XXXXXXX 100644
+--- a/isnobol4.c
++++ b/isnobol4.c
+@@ -11488,6 +11488,13 @@ L_TSALT:
+ L_SALT1:
+     D(LENFCL) = D(D_A(PDLPTR) + 3*DESCR);
+ L_SALT2:
++    if (getenv("S148_TRACE")) {
++        fprintf(stderr, "SALT2 PDLPTR=%lx slot1={a=%lx,f=%d,v=%d} slot2={a=%lx,f=%d,v=%d} PATBCL=%lx TXSP=%ld\n",
++            (long)D_A(PDLPTR),
++            (long)D_A(D_A(PDLPTR)+DESCR), (int)D_F(D_A(PDLPTR)+DESCR), (int)D_V(D_A(PDLPTR)+DESCR),
++            (long)D_A(D_A(PDLPTR)+2*DESCR), (int)D_F(D_A(PDLPTR)+2*DESCR), (int)D_V(D_A(PDLPTR)+2*DESCR),
++            (long)D_A(PATBCL), (long)S_L(TXSP));
++    }
+     D(XCL) = D(D_A(PDLPTR) + DESCR);
+     D(YCL) = D(D_A(PDLPTR) + 2*DESCR);
+     D_A(PDLPTR) -= 3*DESCR;
+@@ -11605,6 +11612,11 @@ L_UNSC:
+     /*_*/
+ L_SCOK:
+ L_TSCOK:
++    if (getenv("S148_TRACE")) {
++        fprintf(stderr, "SCOK PDLPTR=%lx PATBCL=%lx PATICL=%lx XCL.v=%d TXSP=%ld\n",
++            (long)D_A(PDLPTR), (long)D_A(PATBCL), (long)D_A(PATICL),
++            (int)D_V(XCL), (long)S_L(TXSP));
++    }
+     D_A(PATICL) = D_V(XCL);
+     D_F(PATICL) = D_V(PATICL) = 0;
+     if (D_A(PATICL) == 0)
+@@ -12224,6 +12236,10 @@ L_STARP6:
+     case 3:
+        BRANCH(RTNUL3)
+     }
+ L_STARP2:
++    if (getenv("S148_TRACE")) {
++        fprintf(stderr, "STARP2-entry PDLPTR=%lx PATBCL=%lx TXSP=%ld\n",
++            (long)D_A(PDLPTR), (long)D_A(PATBCL), (long)S_L(TXSP));
++    }
+     POP(STREX_innerpat);
+     POP(STREX_entrypdl);
+     POP(YCL);
+@@ -12244,6 +12260,11 @@ L_STARP2:
+        D(D_A(STREX_entrypdl) + DESCR) = D(STREXCCL);
+        D(D_A(STREX_entrypdl) + 2*DESCR) = D(PATBCL);
+     }
++    if (getenv("S148_TRACE")) {
++        fprintf(stderr, "STARP2-exit PDLPTR=%lx PATBCL=%lx TXSP=%ld leaks=%s\n",
++            (long)D_A(PDLPTR), (long)D_A(PATBCL), (long)S_L(TXSP),
++            D_A(PDLPTR) > D_A(STREX_entrypdl) ? "yes" : "no");
++    }
+     goto L_SCOK;
+     /*_*/
+ L_STARP5:
+@@ -12348,6 +12369,10 @@ L_FNCE:
+     goto L_SCOK;
+     /*_*/
+ L_FNCA:
++    if (getenv("S148_TRACE")) {
++        fprintf(stderr, "FNCA-ENTRY PDLPTR=%lx PATBCL=%lx PATICL=%lx TXSP=%ld\n",
++            (long)D_A(PDLPTR), (long)D_A(PATBCL), (long)D_A(PATICL), (long)S_L(TXSP));
++    }
+     /* F-2 Step 3a: P at slot[4] of FENCEPT node ... */
+     D(YPTR) = D(D_A(PATBCL) + D_A(PATICL) + DESCR);
+     D_A(PDLPTR) += 3*DESCR;
+@@ -12384,6 +12409,10 @@ L_FNCA:
+        BRANCH(RTNUL3)
+     }
+     /* success: inner P matched — restore outer cstack state. */
++    if (getenv("S148_TRACE")) {
++        fprintf(stderr, "FNCA-SUCCESS pre-pop PDLPTR=%lx PATBCL=%lx TXSP=%ld\n",
++            (long)D_A(PDLPTR), (long)D_A(PATBCL), (long)S_L(TXSP));
++    }
+     POP(NHEDCL);
+     POP(NAMICL);
+     POP(PDLHED);
+@@ -12431,6 +12460,10 @@ L_FNCC1:
+     BRANCH(FAIL)
+     /*_*/
+ L_FNCD:
++    if (getenv("S148_TRACE")) {
++        fprintf(stderr, "FNCD-FIRE PDLPTR=%lx YCL=%lx PATBCL=%lx TXSP=%ld\n",
++            (long)D_A(PDLPTR), (long)D_A(YCL), (long)D_A(PATBCL), (long)S_L(TXSP));
++    }
+     D(PDLPTR) = D(YCL);
+     D_A(PDLPTR) -= 3*DESCR;
+     D(NAMICL) = D(NHEDCL);
+@@ -12440,6 +12473,10 @@ L_FNCD:
+ L_STREXC:
+     /* STREXCCL sentinel — session #56/#58. */
++    if (getenv("S148_TRACE")) {
++        fprintf(stderr, "STREXC-FIRE PDLPTR=%lx old_PATBCL=%lx new_PATBCL=%lx\n",
++            (long)D_A(PDLPTR), (long)D_A(PATBCL), (long)D_A(YCL));
++    }
+     D(PATBCL) = D(YCL);
+     goto L_SALT3;
+     /*_*/
