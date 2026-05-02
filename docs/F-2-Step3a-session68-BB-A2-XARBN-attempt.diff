@@ -1,0 +1,234 @@
+diff --git a/isnobol4.c b/isnobol4.c
+index a66fc14..c590f81 100644
+--- a/isnobol4.c
++++ b/isnobol4.c
+@@ -11447,6 +11447,21 @@ ARG(ret_t retval) {
+ static int
+ SCIN1(ret_t retval) {
+     ENTRY(SCIN1)
++    /* F-2 Step 3a session #67 BB-FENCE: per-SCIN1-frame FENCE locals.
++       Each FENCE invocation in this frame uses these C-stack locals to
++       save/restore outer state — immune to RSTSTK and to nested-SCIN
++       cstack manipulation.  Nested FENCEs each have their own SCIN1
++       frame (FNCA calls SCIN -> SCIN1) so they don't share these locals.
++       Multiple FENCEs in sequence within one SCIN1 frame each clobber
++       fnc_bb at their alpha — but each prior FENCE's beta has already
++       installed its PDL trap and no longer needs the locals. */
++    struct {
++	struct descr saved_PATBCL, saved_PATICL, saved_XCL, saved_YCL;
++	struct descr saved_PDLHED, saved_NAMICL, saved_NHEDCL;
++	struct descr saved_MAXLEN;
++	int_t saved_LENFCL;
++	int_t fence_trap_pos;     /* PDLPTR of FENCE's trap entry */
++    } fnc_bb;
+ L_SCIN1A:
+     D(PATBCL) = D(YPTR);
+     if (D_A(UNSCCL) != 0)
+@@ -12223,6 +12238,31 @@ L_STARP2:
+     POP(PATICL);
+     POP(PATBCL);
+     POP(MAXLEN);
++    /* session #68 A2-xfnca: zero non-FNC slot[1]s in the leak region that
++     * would re-invoke FENCE (XFNCA) when dispatched under inner PATBCL.
++     * These are stale continuations from outer-pattern navigation of FENCE's
++     * *var node — retrying them would illegally bypass FENCE's seal.
++     * Guard5 (cmd=LEN(1)|LEN(2), no FENCE) is unaffected: its entries point
++     * to XDSAR/XSTAR (case 32) nodes, not XFNCA.
++     * Precise: for each non-FNC entry with xcl.a != 0, read the node at
++     * innerpat+xcl.a+DESCR; if it's FNC and its function opcode == XFNCA,
++     * zero the entry. */
++    if (D_A(PDLPTR) > D_A(STREX_entrypdl) && D_A(STREX_innerpat) != 0) {
++	ptr_t pslot1, p;
++	for (p = (ptr_t)D_A(STREX_entrypdl) + 3*DESCR;
++	     p <= (ptr_t)D_A(PDLPTR); p += 3*DESCR) {
++	    pslot1 = p + DESCR;
++	    if (!(D_F(pslot1) & FNC) && D_A(pslot1) != 0) {
++		ptr_t znode = (ptr_t)D_A(STREX_innerpat) + (int_t)D_A(pslot1) + DESCR;
++		if (getenv("XFNCA_T")) fprintf(stderr,"A2xf p=%lx xcl.a=%lx znode_f=%x znode_a=%ld XARBN=%d\n",(long)p,(long)D_A(pslot1),(int)D_F(znode),(long)D_A((ptr_t)D_A(znode)),(int)XARBN);
++		if ((D_F(znode) & FNC) && D_A((ptr_t)D_A(znode)) == XARBN) {
++		    D_A(pslot1) = 0;
++		    D_F(pslot1) = 0;
++		    D_V(pslot1) = 0;
++		}
++	    }
++	}
++    }
+     /* session #58: paired bottom + top STREXCCL sentinels.
+      * At success-with-inner-leaks, install a routing pair so the failure
+      * walker descending later restores PATBCL correctly at BOTH ends of
+@@ -12328,12 +12368,39 @@ L_FNCE:
+     goto L_SCOK;
+     /*_*/
+ L_FNCA:
+-    /* F-2 Step 3a: P at slot[4] of FENCEPT node (5-descr layout, kept zero at
+-       slot[3] so QUICKSCAN length check at SCIN3 passes). Companion fix in
+-       cpypat handles v=4 advance (5*DESCR) for this self-contained node. */
+-    /* after SCIN3: PATICL = 3*DESCR (slot[3]). P is at PATBCL + 4*DESCR.        */
++    /* F-2 Step 3a session #67: BB-style FENCE.  Four conceptual ports:
++     *   alpha  = entry: save outer state to C-stack-locals, push SCFLCL trap
++     *            (inner-base: walker stops here if P fails entirely),
++     *            recursive SCIN(P).
++     *   beta   = P succeeded: restore outer state from C-locals, TRUNCATE PDL
++     *            at fence_trap_pos (drops P's leaks).  Convert the SCFLCL trap
++     *            in place to FNCDCL (the seal — walker dispatching FNCDCL goes
++     *            through the FENCE, doesn't re-enter P).
++     *   gamma  = failure walker hits FNCDCL trap (L_FNCD): pop trap,
++     *            continue walker past FENCE.
++     *   omega  = P failed (returned 1): restore outer state from C-locals,
++     *            truncate PDL below SCFLCL trap (drops trap and any P leaks),
++     *            propagate failure to outer.
++     *
++     * C-stack-local saves are immune to RSTSTK and nested SCIN cstack
++     * manipulation - this eliminates the FNCA save/restore bug class
++     * permanently.  Truncating PDL at beta makes FENCE's seal physical
++     * (no leaked alts to backtrack into).
++     */
++    /* P at slot[4] of FENCEPT node (PATBCL+PATICL+DESCR after SCIN3 setup). */
+     D(YPTR) = D(D_A(PATBCL) + D_A(PATICL) + DESCR);
+-    /* Push SCFLCL sentinel — inner SCIN's failure walker stops here when P fails. */
++    /* alpha: save outer state on C-stack */
++    fnc_bb.saved_PATBCL = D(PATBCL);
++    fnc_bb.saved_PATICL = D(PATICL);
++    fnc_bb.saved_XCL    = D(XCL);
++    fnc_bb.saved_YCL    = D(YCL);
++    fnc_bb.saved_PDLHED = D(PDLHED);
++    fnc_bb.saved_NAMICL = D(NAMICL);
++    fnc_bb.saved_NHEDCL = D(NHEDCL);
++    fnc_bb.saved_MAXLEN = D(MAXLEN);
++    fnc_bb.saved_LENFCL = D_A(LENFCL);
++    /* alpha: push SCFLCL trap (inner-base sentinel — bottoms out walker if
++     * P fails entirely).  Will be replaced by FNCDCL at beta on success. */
+     D_A(PDLPTR) += 3*DESCR;
+     if (D_A(PDLPTR) > D_A(PDLEND))
+ 	BRANCH(INTR31)
+@@ -12342,25 +12409,11 @@ L_FNCA:
+     D_F(TMVAL) = D_V(TMVAL) = 0;
+     D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+     D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
+-    /* Save outer state on cstack — restored via RSTSTK after SCIN returns.
+-       PDLPTR is saved so success path can rewind PDL past the SCFLCL trap
+-       AND any leaked entries from a successful inner SCIN that didn't pop
+-       its own PDL state on success. */
+-    PUSH(MAXLEN);
+-    PUSH(PATBCL);
+-    PUSH(PATICL);
+-    PUSH(XCL);
+-    PUSH(YCL);
+-    PUSH(PDLPTR);
+-    PUSH(PDLHED);
+-    PUSH(NAMICL);
+-    PUSH(NHEDCL);
+-    /* Set inner pmhbs/name-list-head — mirrors original pre-D6 FNCA shape and
+-       ATP/BAL idiom. Inner P's pattern primitives that read PDLHED/NHEDCL (BAL,
+-       nested FENCE) see the inner snapshot. RESTORED on both success and failure
+-       below so outer state is preserved. */
++    fnc_bb.fence_trap_pos = D_A(PDLPTR);
++    /* alpha: set inner pmhbs/name-list-head for nested FENCE/BAL */
+     D(PDLHED) = D(PDLPTR);
+     D(NHEDCL) = D(NAMICL);
++    /* alpha: recursive SCIN call into P */
+     SAVSTK();
+     switch (SCIN(NORET)) {
+     case 1:
+@@ -12368,55 +12421,37 @@ L_FNCA:
+     case 3:
+ 	BRANCH(RTNUL3)
+     }
+-    /* success: inner P matched — restore outer cstack state. */
+-    POP(NHEDCL);
+-    POP(NAMICL);
+-    POP(PDLHED);
+-    POP(PDLPTR);   /* rewind PDL past SCFLCL and any inner leaks */
+-    /* PDLPTR is now back to its pre-SCFLCL value, BUT we kept the SCFLCL trap
+-       slot itself (PDLPTR += 3*DESCR was done before the push). Actually no —
+-       saving PDLPTR AFTER the SCFLCL push means restoring it returns to AFTER
+-       the push, leaving SCFLCL on PDL. We want to rewind to BEFORE — so subtract
+-       3*DESCR to discard SCFLCL too, then push FNCDCL fresh. */
+-    D_A(PDLPTR) -= 3*DESCR;
+-    POP(YCL);
+-    POP(XCL);
+-    POP(PATICL);
+-    POP(PATBCL);
+-    POP(MAXLEN);
+-    /* Push FNCD seal at clean PDL position. */
+-    D_A(PDLPTR) += 3*DESCR;
+-    if (D_A(PDLPTR) > D_A(PDLEND))
+-	BRANCH(INTR31)
+-    D(D_A(PDLPTR) + DESCR) = D(FNCDCL);        /* seal — blocks backtrack into P */
+-    /* Store seal-base (= PDLPTR = inner PDLHED = SCFLCL base) in slot[2].
+-       FNCD: restores PDLPTR to seal-base, then flpops 3*DESCR to expose the
+-       SCFLCL slot below, which the outer walker reads and discards cleanly.
+-       Leaked inner entries between seal-base+3*DESCR and P2 are above PDLPTR
+-       after FNCD rewinds — they are skipped by the outer walker. */
+-    D_A(TMVAL) = D_A(PDLPTR);     /* slot[2] = seal base = P1 */
+-    D_F(TMVAL) = D_V(TMVAL) = 0;
+-    D(D_A(PDLPTR) + 2*DESCR) = D(TMVAL);
+-    D(D_A(PDLPTR) + 3*DESCR) = D(LENFCL);
++    /* beta: P succeeded.  Restore outer state from C-locals.
++     * Truncate PDL at fence_trap_pos — drops any leaks P pushed.
++     * Replace SCFLCL trap in place with FNCDCL (the seal). */
++    D(PATBCL) = fnc_bb.saved_PATBCL;
++    D(PATICL) = fnc_bb.saved_PATICL;
++    D(XCL)    = fnc_bb.saved_XCL;
++    D(YCL)    = fnc_bb.saved_YCL;
++    D(PDLHED) = fnc_bb.saved_PDLHED;
++    D(NAMICL) = fnc_bb.saved_NAMICL;
++    D(NHEDCL) = fnc_bb.saved_NHEDCL;
++    D(MAXLEN) = fnc_bb.saved_MAXLEN;
++    D_A(LENFCL) = fnc_bb.saved_LENFCL;
++    D_A(PDLPTR) = fnc_bb.fence_trap_pos;   /* truncate — drop P's leaks */
++    /* Replace SCFLCL slot[1] with FNCDCL — walker dispatching this trap
++     * later goes to L_FNCD (continue walking past FENCE). */
++    D(D_A(PDLPTR) + DESCR) = D(FNCDCL);
+     goto L_SCOK;
+     /*_*/
+ L_FNCBX:
+-    /* F-2 Step 3a: inner SCIN failed — rewind PDL past leaks AND SCFLCL,
+-       restore outer cstack state, propagate via the failure walker.
+-       The outer trap entry pushed by SCIN3-around-FNCA is now exposed at
+-       top of PDL and gets consumed by SALT.
+-       Also restores outer PDLHED/NAMICL/NHEDCL — set to inner-snapshot at
+-       FNCA entry, must be popped here too (mirrors success path). */
+-    POP(NHEDCL);
+-    POP(NAMICL);
+-    POP(PDLHED);
+-    POP(PDLPTR);
+-    D_A(PDLPTR) -= 3*DESCR;   /* discard SCFLCL trap slot */
+-    POP(YCL);
+-    POP(XCL);
+-    POP(PATICL);
+-    POP(PATBCL);
+-    POP(MAXLEN);
++    /* omega: P failed.  Restore outer state, truncate PDL below FENCE trap
++     * (drops both P's leaks AND the FENCE trap itself), propagate failure. */
++    D(PATBCL) = fnc_bb.saved_PATBCL;
++    D(PATICL) = fnc_bb.saved_PATICL;
++    D(XCL)    = fnc_bb.saved_XCL;
++    D(YCL)    = fnc_bb.saved_YCL;
++    D(PDLHED) = fnc_bb.saved_PDLHED;
++    D(NAMICL) = fnc_bb.saved_NAMICL;
++    D(NHEDCL) = fnc_bb.saved_NHEDCL;
++    D(MAXLEN) = fnc_bb.saved_MAXLEN;
++    D_A(LENFCL) = fnc_bb.saved_LENFCL;
++    D_A(PDLPTR) = fnc_bb.fence_trap_pos - 3*DESCR;   /* drop FENCE trap too */
+     goto L_TSALT;
+     /*_*/
+ L_FNCB:
+@@ -12431,10 +12466,13 @@ L_FNCC1: /* D6: unreachable — kept to avoid dangling goto */
+     BRANCH(FAIL)
+     /*_*/
+ L_FNCD:
+-    D(PDLPTR) = D(YCL);            /* restore to inner base */
+-    D_A(PDLPTR) -= 3*DESCR;        /* flpop: consume SCFLCL trap */
+-    D(NAMICL) = D(NHEDCL);
+-    BRANCH(FAIL)
++    /* gamma: failure walker hit FENCE trap.  P's leaks were already truncated
++     * at beta, so the trap is at top of PDL with nothing above it.  Just
++     * continue the walker past this trap.
++     * Note: SALT2 already advanced PDLPTR -= 3*DESCR before reaching us
++     * (standard walker decrement).  Just route to TSALT to dispatch the
++     * next alt below. */
++    goto L_TSALT;
+     /*_*/
+ L_STREXC:
+     /* STREXCCL sentinel — session #56/#58.  SALT2 loaded slot[2]=PATBCL into YCL.
